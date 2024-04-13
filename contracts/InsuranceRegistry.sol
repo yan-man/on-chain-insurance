@@ -22,11 +22,15 @@ contract InsuranceRegistry is AccessControlEnumerable {
         _grantRole(MASTER_ADMIN, masterAdmin_);
     }
 
-    function addInsuranceApprover(address approver_) external onlyMasterAdmin {
+    function addApprover(address approver_) external onlyMasterAdmin {
         /// @dev Master admin shouldn't approve themselves as approver. Too much control
         if (hasRole(MASTER_ADMIN, approver_)) {
             revert InsuranceRegistry_InvalidApprover();
         }
         _grantRole(APPROVER_ADMIN, approver_);
     }
+
+    // function removeApprover(address approver_) external onlyMasterAdmin {
+    //     _revokeRole(APPROVER_ADMIN, approver_);
+    // }
 }

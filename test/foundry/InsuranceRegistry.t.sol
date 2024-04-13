@@ -31,7 +31,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
         );
     }
 
-    function test_addInsuranceApprover_fail_nonMasterAdmin(
+    function test_addApprover_fail_nonMasterAdmin(
         address nonMasterAdmin_
     ) external {
         vm.assume(nonMasterAdmin_ != args.masterAdmin);
@@ -40,16 +40,29 @@ contract InsuranceRegistryTest is Test, CustomTest {
         vm.expectRevert(
             InsuranceRegistry.InsuranceRegistry_OnlyMasterAdmin.selector
         );
-        insuranceRegistry.addInsuranceApprover(_approver);
+        insuranceRegistry.addApprover(_approver);
         vm.stopPrank();
     }
 
-    function test_addInsuranceApprover_fail_invalidApprover() external {
+    function test_addApprover_fail_invalidApprover() external {
         vm.startPrank(args.masterAdmin);
         vm.expectRevert(
             InsuranceRegistry.InsuranceRegistry_InvalidApprover.selector
         );
-        insuranceRegistry.addInsuranceApprover(args.masterAdmin);
+        insuranceRegistry.addApprover(args.masterAdmin);
         vm.stopPrank();
+    }
+
+    function test_addApprover_success(address approver_) external {
+        vm.assume(approver_ != args.masterAdmin);
+        vm.startPrank(args.masterAdmin);
+        insuranceRegistry.addApprover(approver_);
+        vm.stopPrank();
+        assertTrue(
+            insuranceRegistry.hasRole(
+                insuranceRegistry.APPROVER_ADMIN(),
+                approver_
+            )
+        );
     }
 }
