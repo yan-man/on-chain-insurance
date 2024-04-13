@@ -141,17 +141,17 @@ contract InsuranceRegistryTest is Test, CustomTest {
     }
 
     function test_setInsuranceAdjuster_success(
+        address approver_,
         address adjuster_,
         bool status_
     ) external {
-        address _approver = vm.addr(getCounterAndIncrement());
         vm.assume(
             adjuster_ != address(0) &&
                 adjuster_ != args.masterAdmin &&
-                adjuster_ != _approver
+                adjuster_ != approver_
         );
-        _addApprover(_approver);
-        vm.startPrank(_approver);
+        _addApprover(approver_);
+        vm.startPrank(approver_);
         vm.expectEmit(true, true, false, false);
         emit InsuranceRegistry.InsuranceRegistry_AdjustersUpdated(
             adjuster_,
@@ -166,6 +166,11 @@ contract InsuranceRegistryTest is Test, CustomTest {
         address adjuster_,
         bool status_
     ) external {
+        vm.assume(
+            adjuster_ != address(0) &&
+                adjuster_ != args.masterAdmin &&
+                adjuster_ != nonApproverAdmin_
+        );
         vm.startPrank(nonApproverAdmin_);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -173,6 +178,24 @@ contract InsuranceRegistryTest is Test, CustomTest {
                 nonApproverAdmin_,
                 insuranceRegistry.APPROVER_ADMIN()
             )
+        );
+        insuranceRegistry.setInsuranceAdjuster(adjuster_, status_);
+        vm.stopPrank();
+    }
+
+    function test_setInsuranceAdjuster_fail_invalidZeroAddress(
+        address approverAdmin_,
+        bool status_
+    ) external {
+        vm.assume(
+            approverAdmin_ != address(0) && approverAdmin_ != args.masterAdmin
+        );
+        address adjuster_ = address(0);
+
+        _addApprover(approverAdmin_);
+        vm.startPrank(approverAdmin_);
+        vm.expectRevert(
+            InsuranceRegistry.InsuranceRegistry_InvalidZeroAddress.selector
         );
         insuranceRegistry.setInsuranceAdjuster(adjuster_, status_);
         vm.stopPrank();
