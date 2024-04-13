@@ -10,6 +10,8 @@ contract InsuranceRegistry is AccessControlEnumerable {
         bool status;
     }
 
+    uint256 public constant REQUIRED_APPROVERS = 1;
+    uint256 public constant REQUIRED_ADJUSTERS = 3;
     bytes32 public constant MASTER_ADMIN = keccak256("MASTER_ADMIN"); // ability to add/remove insurance APPROVER_ADMIN
     bytes32 public constant APPROVER_ADMIN = keccak256("APPROVER_ADMIN"); // ability to add/remove insurance ADJUSTER
 
@@ -80,7 +82,9 @@ contract InsuranceRegistry is AccessControlEnumerable {
         return adjusters[adjuster_].status;
     }
 
-    // function isInitialized() external view returns (bool) {
-    //     return getRoleMemberCount(APPROVER_ADMIN) >= 3 && ;
-    // }
+    function isInitialized() external view returns (bool) {
+        return
+            getRoleMemberCount(APPROVER_ADMIN) >= REQUIRED_APPROVERS &&
+            adjusterCount >= REQUIRED_ADJUSTERS;
+    }
 }

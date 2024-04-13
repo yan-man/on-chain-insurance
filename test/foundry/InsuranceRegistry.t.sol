@@ -37,6 +37,8 @@ contract InsuranceRegistryTest is Test, CustomTest {
                 args.masterAdmin
             )
         );
+        assertEq(insuranceRegistry.adjusterCount(), 0);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_addApprover_success(address approver_) external {
@@ -50,18 +52,14 @@ contract InsuranceRegistryTest is Test, CustomTest {
         );
         insuranceRegistry.addApprover(approver_);
         vm.stopPrank();
-        console.log(
-            insuranceRegistry.hasRole(
-                insuranceRegistry.APPROVER_ADMIN(),
-                approver_
-            )
-        );
         assertTrue(
             insuranceRegistry.hasRole(
                 insuranceRegistry.APPROVER_ADMIN(),
                 approver_
             )
         );
+        assertEq(insuranceRegistry.adjusterCount(), 0);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_addApprover_fail_invalidMasterAdmin(
@@ -79,6 +77,8 @@ contract InsuranceRegistryTest is Test, CustomTest {
         );
         insuranceRegistry.addApprover(_approver);
         vm.stopPrank();
+        assertEq(insuranceRegistry.adjusterCount(), 0);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_addApprover_fail_invalidApprover() external {
@@ -88,6 +88,8 @@ contract InsuranceRegistryTest is Test, CustomTest {
         );
         insuranceRegistry.addApprover(args.masterAdmin);
         vm.stopPrank();
+        assertEq(insuranceRegistry.adjusterCount(), 0);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_addApprover_fail_invalidZeroAddress() external {
@@ -98,6 +100,14 @@ contract InsuranceRegistryTest is Test, CustomTest {
         );
         insuranceRegistry.addApprover(_approver);
         vm.stopPrank();
+        assertFalse(
+            insuranceRegistry.hasRole(
+                insuranceRegistry.APPROVER_ADMIN(),
+                _approver
+            )
+        );
+        assertEq(insuranceRegistry.adjusterCount(), 0);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_removeApprover_success(address approver_) external {
@@ -112,6 +122,8 @@ contract InsuranceRegistryTest is Test, CustomTest {
                 approver_
             )
         );
+        assertEq(insuranceRegistry.adjusterCount(), 0);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_removeApprover_fail_invalidMasterAdmin(
@@ -135,6 +147,8 @@ contract InsuranceRegistryTest is Test, CustomTest {
         );
         insuranceRegistry.removeApprover(approver_);
         vm.stopPrank();
+        assertEq(insuranceRegistry.adjusterCount(), 0);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_setInsuranceAdjuster_success_initialize(
@@ -165,6 +179,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
             .adjusters(adjuster_);
         assertEq(_adjuster, adjuster_);
         assertEq(_savedId, _id);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_setInsuranceAdjuster_success_editStatus(
@@ -194,6 +209,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
             .adjusters(adjuster_);
         assertEq(_adjuster, adjuster_);
         assertEq(_savedId, _id);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_setInsuranceAdjuster_success_editIdOnly(
@@ -227,6 +243,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
             .adjusters(adjuster_);
         assertEq(_adjuster, adjuster_);
         assertEq(_savedId, newId_);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_setInsuranceAdjuster_fail_invalidApproverAdmin(
@@ -251,6 +268,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
         insuranceRegistry.setInsuranceAdjuster(adjuster_, _id, status_);
         vm.stopPrank();
         assertEq(insuranceRegistry.isAdjuster(adjuster_), false);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_setInsuranceAdjuster_fail_invalidZeroAddress(
@@ -270,6 +288,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
         insuranceRegistry.setInsuranceAdjuster(_adjuster, _id, status_);
         vm.stopPrank();
         assertEq(insuranceRegistry.isAdjuster(_adjuster), false);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_setInsuranceAdjuster_fail_invalidAdjuster(
@@ -289,6 +308,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
         insuranceRegistry.setInsuranceAdjuster(_adjuster, _id, status_);
         vm.stopPrank();
         assertEq(insuranceRegistry.isAdjuster(_adjuster), false);
+        assertFalse(insuranceRegistry.isInitialized());
     }
 
     function test_setInsuranceAdjuster_fail_invalidAdjusterMasterAdmin(
@@ -309,5 +329,30 @@ contract InsuranceRegistryTest is Test, CustomTest {
         insuranceRegistry.setInsuranceAdjuster(_adjuster, _id, status_);
         vm.stopPrank();
         assertEq(insuranceRegistry.isAdjuster(_adjuster), false);
+        assertFalse(insuranceRegistry.isInitialized());
+    }
+
+    function test_isInitialized_success() external {
+        address _approver = vm.addr(getCounterAndIncrement());
+        _addApprover(_approver);
+        uint256 _expectedApproverCount = insuranceRegistry.REQUIRED_APPROVERS();
+        assertEq(
+            insuranceRegistry.getRoleMemberCount(
+                insuranceRegistry.APPROVER_ADMIN()
+            ),
+            _expectedApproverCount
+        );
+
+        uint256 _expectedAdjusterCount = insuranceRegistry.REQUIRED_ADJUSTERS();
+        address _adjuster;
+        bool _status = true;
+        vm.startPrank(_approver);
+        for (uint256 i = _expectedAdjusterCount; i > 0; --i) {
+            _adjuster = vm.addr(getCounterAndIncrement());
+            insuranceRegistry.setInsuranceAdjuster(_adjuster, "id", _status);
+            assertEq(insuranceRegistry.isAdjuster(_adjuster), _status);
+        }
+
+        assertTrue(insuranceRegistry.isInitialized());
     }
 }
