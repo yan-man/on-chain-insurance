@@ -24,11 +24,42 @@ contract InsuranceRegistryTest is Test, CustomTest {
         insuranceRegistry = deployInsuranceRegistry.run();
     }
 
+    function _addApprover(address approver_) internal {
+        vm.startPrank(args.masterAdmin);
+        insuranceRegistry.addApprover(approver_);
+        vm.stopPrank();
+    }
+
     function test_deploymentParams_success() external view {
         assertTrue(
             insuranceRegistry.hasRole(
                 insuranceRegistry.MASTER_ADMIN(),
                 args.masterAdmin
+            )
+        );
+    }
+
+    function test_addApprover_success(address approver_) external {
+        vm.assume(approver_ != args.masterAdmin && approver_ != address(0));
+        vm.startPrank(args.masterAdmin);
+        vm.expectEmit(true, true, true, false);
+        emit IAccessControl.RoleGranted(
+            insuranceRegistry.APPROVER_ADMIN(),
+            approver_,
+            args.masterAdmin
+        );
+        insuranceRegistry.addApprover(approver_);
+        vm.stopPrank();
+        console.log(
+            insuranceRegistry.hasRole(
+                insuranceRegistry.APPROVER_ADMIN(),
+                approver_
+            )
+        );
+        assertTrue(
+            insuranceRegistry.hasRole(
+                insuranceRegistry.APPROVER_ADMIN(),
+                approver_
             )
         );
     }
@@ -59,17 +90,14 @@ contract InsuranceRegistryTest is Test, CustomTest {
         vm.stopPrank();
     }
 
-    function test_addApprover_success(address approver_) external {
-        vm.assume(approver_ != args.masterAdmin);
+    function test_addApprover_fail_invalidZeroAddress() external {
+        address _approver = address(0);
         vm.startPrank(args.masterAdmin);
-        insuranceRegistry.addApprover(approver_);
-        vm.stopPrank();
-        assertTrue(
-            insuranceRegistry.hasRole(
-                insuranceRegistry.APPROVER_ADMIN(),
-                approver_
-            )
+        vm.expectRevert(
+            InsuranceRegistry.InsuranceRegistry_InvalidZeroAddress.selector
         );
+        insuranceRegistry.addApprover(_approver);
+        vm.stopPrank();
     }
 
     function test_removeApprover_success(address approver_) external {
@@ -91,7 +119,9 @@ contract InsuranceRegistryTest is Test, CustomTest {
         address approver_
     ) external {
         vm.assume(
-            nonMasterAdmin_ != args.masterAdmin && approver_ != args.masterAdmin
+            nonMasterAdmin_ != args.masterAdmin &&
+                approver_ != args.masterAdmin &&
+                approver_ != address(0)
         );
 
         vm.startPrank(args.masterAdmin);
@@ -107,6 +137,44 @@ contract InsuranceRegistryTest is Test, CustomTest {
             )
         );
         insuranceRegistry.removeApprover(approver_);
+        vm.stopPrank();
+    }
+
+    function test_setInsuranceAdjuster_success(
+        address adjuster_,
+        bool status_
+    ) external {
+        address _approver = vm.addr(getCounterAndIncrement());
+        vm.assume(
+            adjuster_ != address(0) &&
+                adjuster_ != args.masterAdmin &&
+                adjuster_ != _approver
+        );
+        _addApprover(_approver);
+        vm.startPrank(_approver);
+        vm.expectEmit(true, true, false, false);
+        emit InsuranceRegistry.InsuranceRegistry_AdjustersUpdated(
+            adjuster_,
+            status_
+        );
+        insuranceRegistry.setInsuranceAdjuster(adjuster_, status_);
+        vm.stopPrank();
+    }
+
+    function test_setInsuranceAdjuster_fail_invalidApproverAdmin(
+        address nonApproverAdmin_,
+        address adjuster_,
+        bool status_
+    ) external {
+        vm.startPrank(nonApproverAdmin_);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                nonApproverAdmin_,
+                insuranceRegistry.APPROVER_ADMIN()
+            )
+        );
+        insuranceRegistry.setInsuranceAdjuster(adjuster_, status_);
         vm.stopPrank();
     }
 }
