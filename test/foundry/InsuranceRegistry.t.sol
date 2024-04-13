@@ -101,7 +101,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
     }
 
     function test_removeApprover_success(address approver_) external {
-        vm.assume(approver_ != args.masterAdmin);
+        vm.assume(approver_ != args.masterAdmin && approver_ != address(0));
         vm.startPrank(args.masterAdmin);
         insuranceRegistry.addApprover(approver_);
         insuranceRegistry.removeApprover(approver_);
@@ -118,11 +118,8 @@ contract InsuranceRegistryTest is Test, CustomTest {
         address nonMasterAdmin_,
         address approver_
     ) external {
-        vm.assume(
-            nonMasterAdmin_ != args.masterAdmin &&
-                approver_ != args.masterAdmin &&
-                approver_ != address(0)
-        );
+        vm.assume(nonMasterAdmin_ != args.masterAdmin);
+        vm.assume(approver_ != args.masterAdmin && approver_ != address(0));
 
         vm.startPrank(args.masterAdmin);
         insuranceRegistry.addApprover(approver_);
@@ -158,6 +155,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
             status_
         );
         insuranceRegistry.setInsuranceAdjuster(adjuster_, status_);
+        assertEq(insuranceRegistry.adjusters(adjuster_), status_);
         vm.stopPrank();
     }
 
@@ -180,6 +178,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
             )
         );
         insuranceRegistry.setInsuranceAdjuster(adjuster_, status_);
+        assertEq(insuranceRegistry.adjusters(adjuster_), false);
         vm.stopPrank();
     }
 
@@ -198,6 +197,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
             InsuranceRegistry.InsuranceRegistry_InvalidZeroAddress.selector
         );
         insuranceRegistry.setInsuranceAdjuster(_adjuster, status_);
+        assertEq(insuranceRegistry.adjusters(_adjuster), false);
         vm.stopPrank();
     }
 
@@ -216,6 +216,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
             InsuranceRegistry.InsuranceRegistry_InvalidAdjuster.selector
         );
         insuranceRegistry.setInsuranceAdjuster(_adjuster, status_);
+        assertEq(insuranceRegistry.adjusters(_adjuster), false);
         vm.stopPrank();
     }
 
@@ -234,6 +235,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
             InsuranceRegistry.InsuranceRegistry_InvalidAdjuster.selector
         );
         insuranceRegistry.setInsuranceAdjuster(_adjuster, status_);
+        assertEq(insuranceRegistry.adjusters(_adjuster), false);
         vm.stopPrank();
     }
 }

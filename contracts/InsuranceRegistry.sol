@@ -53,8 +53,4 @@ contract InsuranceRegistry is AccessControlEnumerable {
         adjusters[adjuster_] = status_;
         emit InsuranceRegistry_AdjustersUpdated(adjuster_, status_);
     }
-
-    // function isAdjuster(address adjuster_) public view returns (bool) {
-    //     return adjusters[adjuster_];
-    // }
 }
