@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {Test, console} from "forge-std/Test.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
+
 import {CustomTest} from "../helpers/CustomTest.t.sol";
+import {Test, console} from "forge-std/Test.sol";
 
 import {DeployInsuranceRegistry} from "../../script/DeployInsuranceRegistry.s.sol";
 import {InsuranceRegistry} from "../../contracts/InsuranceRegistry.sol";
@@ -31,14 +33,18 @@ contract InsuranceRegistryTest is Test, CustomTest {
         );
     }
 
-    function test_addApprover_fail_nonMasterAdmin(
+    function test_addApprover_fail_invalidMasterAdmin(
         address nonMasterAdmin_
     ) external {
         vm.assume(nonMasterAdmin_ != args.masterAdmin);
         address _approver = vm.addr(getCounterAndIncrement());
         vm.startPrank(nonMasterAdmin_);
         vm.expectRevert(
-            InsuranceRegistry.InsuranceRegistry_OnlyMasterAdmin.selector
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                nonMasterAdmin_,
+                insuranceRegistry.MASTER_ADMIN()
+            )
         );
         insuranceRegistry.addApprover(_approver);
         vm.stopPrank();
@@ -64,5 +70,43 @@ contract InsuranceRegistryTest is Test, CustomTest {
                 approver_
             )
         );
+    }
+
+    function test_removeApprover_success(address approver_) external {
+        vm.assume(approver_ != args.masterAdmin);
+        vm.startPrank(args.masterAdmin);
+        insuranceRegistry.addApprover(approver_);
+        insuranceRegistry.removeApprover(approver_);
+        vm.stopPrank();
+        assertFalse(
+            insuranceRegistry.hasRole(
+                insuranceRegistry.APPROVER_ADMIN(),
+                approver_
+            )
+        );
+    }
+
+    function test_removeApprover_fail_invalidMasterAdmin(
+        address nonMasterAdmin_,
+        address approver_
+    ) external {
+        vm.assume(
+            nonMasterAdmin_ != args.masterAdmin && approver_ != args.masterAdmin
+        );
+
+        vm.startPrank(args.masterAdmin);
+        insuranceRegistry.addApprover(approver_);
+        vm.stopPrank();
+
+        vm.startPrank(nonMasterAdmin_);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                nonMasterAdmin_,
+                insuranceRegistry.MASTER_ADMIN()
+            )
+        );
+        insuranceRegistry.removeApprover(approver_);
+        vm.stopPrank();
     }
 }
