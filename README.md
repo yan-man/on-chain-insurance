@@ -30,4 +30,10 @@ npx hardhat run scripts/deploy.ts
 
 ## Further Improvements
 
+- more optimized yield
+- governance features for inspectors approval
+- more complex risk logic for calculating premiums
+- upgradability
+-
+
 ## Appendix
