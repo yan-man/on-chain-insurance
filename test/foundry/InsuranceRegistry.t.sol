@@ -2,11 +2,12 @@
 pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
+import {CustomTest} from "../helpers/CustomTest.t.sol";
 
 import {DeployInsuranceRegistry} from "../../script/DeployInsuranceRegistry.s.sol";
 import {InsuranceRegistry} from "../../contracts/InsuranceRegistry.sol";
 
-contract InsuranceRegistryTest is Test {
+contract InsuranceRegistryTest is Test, CustomTest {
     DeployInsuranceRegistry public deployInsuranceRegistry;
     DeployInsuranceRegistry.InsuranceRegistryArgs public args;
     InsuranceRegistry public insuranceRegistry;
@@ -14,19 +15,41 @@ contract InsuranceRegistryTest is Test {
     function setUp() external {
         deployInsuranceRegistry = new DeployInsuranceRegistry();
 
-        address _masterAdmin = address(this);
+        address _masterAdmin = vm.addr(getCounterAndIncrement());
         args = DeployInsuranceRegistry.InsuranceRegistryArgs(_masterAdmin);
         deployInsuranceRegistry.setConstructorArgs(args);
 
         insuranceRegistry = deployInsuranceRegistry.run();
     }
 
-    function test_deploymentParams() external view {
+    function test_deploymentParams_success() external view {
         assertTrue(
             insuranceRegistry.hasRole(
                 insuranceRegistry.MASTER_ADMIN(),
                 args.masterAdmin
             )
         );
+    }
+
+    function test_addInsuranceApprover_fail_nonMasterAdmin(
+        address nonMasterAdmin_
+    ) external {
+        vm.assume(nonMasterAdmin_ != args.masterAdmin);
+        address _approver = vm.addr(getCounterAndIncrement());
+        vm.startPrank(nonMasterAdmin_);
+        vm.expectRevert(
+            InsuranceRegistry.InsuranceRegistry_OnlyMasterAdmin.selector
+        );
+        insuranceRegistry.addInsuranceApprover(_approver);
+        vm.stopPrank();
+    }
+
+    function test_addInsuranceApprover_fail_invalidApprover() external {
+        vm.startPrank(args.masterAdmin);
+        vm.expectRevert(
+            InsuranceRegistry.InsuranceRegistry_InvalidApprover.selector
+        );
+        insuranceRegistry.addInsuranceApprover(args.masterAdmin);
+        vm.stopPrank();
     }
 }
