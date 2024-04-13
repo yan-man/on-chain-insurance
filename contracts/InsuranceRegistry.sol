@@ -5,10 +5,11 @@ import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions
 
 contract InsuranceRegistry is AccessControlEnumerable {
     error InsuranceRegistry_OnlyMasterAdmin();
-    error InsuranceRegistry_InvalidApprover();
+    error InsuranceRegistry_InvalidAdjuster();
 
     bytes32 public constant MASTER_ADMIN = keccak256("MASTER_ADMIN"); // ability to add/remove insurance APPROVER_ADMIN
     bytes32 public constant APPROVER_ADMIN = keccak256("APPROVER_ADMIN"); // ability to add/remove insurance ADJUSTER
+    bool public isInitialized; // flag to check if the contract is initialized; should have at least 3 insurance adjusters
 
     modifier onlyMasterAdmin() {
         if (!hasRole(MASTER_ADMIN, msg.sender)) {
@@ -21,11 +22,11 @@ contract InsuranceRegistry is AccessControlEnumerable {
         _grantRole(MASTER_ADMIN, masterAdmin_);
     }
 
-    function addInsuranceApprover(address approver_) external onlyMasterAdmin {
+    function addInsuranceAdjuster(address adjuster_) external onlyMasterAdmin {
         /// @dev Master admin shouldn't approve themselves as approver. Too much control
-        if (hasRole(MASTER_ADMIN, approver_)) {
-            revert InsuranceRegistry_InvalidApprover();
+        if (hasRole(MASTER_ADMIN, adjuster_)) {
+            revert InsuranceRegistry_InvalidAdjuster();
         }
-        _grantRole(APPROVER_ADMIN, approver_);
+        _grantRole(APPROVER_ADMIN, adjuster_);
     }
 }
