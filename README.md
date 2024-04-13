@@ -1,4 +1,18 @@
-# Sample Hardhat Project
+# Craft Task
+
+## Introduction
+
+## Getting Started
+
+### Setup
+
+### Testing
+
+### Deployment
+
+### Foundry
+
+### Hardhat
 
 This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
 
@@ -11,3 +25,9 @@ REPORT_GAS=true npx hardhat test
 npx hardhat node
 npx hardhat run scripts/deploy.ts
 ```
+
+## Architecture
+
+## Further Improvements
+
+## Appendix
