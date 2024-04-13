@@ -137,7 +137,37 @@ contract InsuranceRegistryTest is Test, CustomTest {
         vm.stopPrank();
     }
 
-    function test_setInsuranceAdjuster_success(
+    function test_setInsuranceAdjuster_success_initialize(
+        address approver_,
+        address adjuster_
+    ) external {
+        vm.assume(
+            adjuster_ != address(0) &&
+                adjuster_ != args.masterAdmin &&
+                adjuster_ != approver_
+        );
+        vm.assume(approver_ != address(0) && approver_ != args.masterAdmin);
+        string memory _id = "id";
+        bool _status = true;
+        _addApprover(approver_);
+        vm.startPrank(approver_);
+        vm.expectEmit(true, true, false, false);
+        emit InsuranceRegistry.InsuranceRegistry_AdjustersUpdated(
+            adjuster_,
+            _status,
+            _id
+        );
+        insuranceRegistry.setInsuranceAdjuster(adjuster_, _id, _status);
+        vm.stopPrank();
+        assertEq(insuranceRegistry.isAdjuster(adjuster_), _status);
+        assertEq(insuranceRegistry.adjusterCount(), 1);
+        (address _adjuster, string memory _savedId, ) = insuranceRegistry
+            .adjusters(adjuster_);
+        assertEq(_adjuster, adjuster_);
+        assertEq(_savedId, _id);
+    }
+
+    function test_setInsuranceAdjuster_success_editStatus(
         address approver_,
         address adjuster_,
         bool status_
@@ -147,16 +177,56 @@ contract InsuranceRegistryTest is Test, CustomTest {
                 adjuster_ != args.masterAdmin &&
                 adjuster_ != approver_
         );
+        vm.assume(approver_ != address(0) && approver_ != args.masterAdmin);
+
+        // initialize adjuster
+        string memory _id = "id";
         _addApprover(approver_);
         vm.startPrank(approver_);
-        vm.expectEmit(true, true, false, false);
-        emit InsuranceRegistry.InsuranceRegistry_AdjustersUpdated(
-            adjuster_,
-            status_
-        );
-        insuranceRegistry.setInsuranceAdjuster(adjuster_, status_);
-        assertEq(insuranceRegistry.adjusters(adjuster_), status_);
+        insuranceRegistry.setInsuranceAdjuster(adjuster_, _id, status_);
+        bool _newStatus = !status_;
+        insuranceRegistry.setInsuranceAdjuster(adjuster_, _id, _newStatus);
         vm.stopPrank();
+
+        assertEq(insuranceRegistry.isAdjuster(adjuster_), _newStatus);
+        assertEq(insuranceRegistry.adjusterCount(), _newStatus ? 1 : 0);
+        (address _adjuster, string memory _savedId, ) = insuranceRegistry
+            .adjusters(adjuster_);
+        assertEq(_adjuster, adjuster_);
+        assertEq(_savedId, _id);
+    }
+
+    function test_setInsuranceAdjuster_success_editIdOnly(
+        address adjuster_,
+        bool status_,
+        string calldata newId_
+    ) external {
+        address _approver = vm.addr(getCounterAndIncrement());
+        vm.assume(
+            adjuster_ != address(0) &&
+                adjuster_ != args.masterAdmin &&
+                adjuster_ != _approver
+        );
+
+        // initialize adjuster
+        string memory _id = "id";
+        _addApprover(_approver);
+        vm.startPrank(_approver);
+        insuranceRegistry.setInsuranceAdjuster(adjuster_, _id, status_);
+        uint256 _initialAdjusterCount = insuranceRegistry.adjusterCount();
+        assertEq(_initialAdjusterCount, status_ ? 1 : 0);
+
+        insuranceRegistry.setInsuranceAdjuster(adjuster_, newId_, status_);
+        vm.stopPrank();
+
+        uint256 _finalAdjusterCount = insuranceRegistry.adjusterCount();
+
+        assertEq(insuranceRegistry.isAdjuster(adjuster_), status_);
+        assertEq(_initialAdjusterCount, _finalAdjusterCount); // status didn't change, so adjuster count should remain the same
+        (address _adjuster, string memory _savedId, ) = insuranceRegistry
+            .adjusters(adjuster_);
+        assertEq(_adjuster, adjuster_);
+        assertEq(_savedId, newId_);
     }
 
     function test_setInsuranceAdjuster_fail_invalidApproverAdmin(
@@ -169,6 +239,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
                 adjuster_ != args.masterAdmin &&
                 adjuster_ != nonApproverAdmin_
         );
+        string memory _id = "id";
         vm.startPrank(nonApproverAdmin_);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -177,9 +248,9 @@ contract InsuranceRegistryTest is Test, CustomTest {
                 insuranceRegistry.APPROVER_ADMIN()
             )
         );
-        insuranceRegistry.setInsuranceAdjuster(adjuster_, status_);
-        assertEq(insuranceRegistry.adjusters(adjuster_), false);
+        insuranceRegistry.setInsuranceAdjuster(adjuster_, _id, status_);
         vm.stopPrank();
+        assertEq(insuranceRegistry.isAdjuster(adjuster_), false);
     }
 
     function test_setInsuranceAdjuster_fail_invalidZeroAddress(
@@ -190,15 +261,15 @@ contract InsuranceRegistryTest is Test, CustomTest {
             approverAdmin_ != address(0) && approverAdmin_ != args.masterAdmin
         );
         address _adjuster = address(0);
-
         _addApprover(approverAdmin_);
+        string memory _id = "id";
         vm.startPrank(approverAdmin_);
         vm.expectRevert(
             InsuranceRegistry.InsuranceRegistry_InvalidZeroAddress.selector
         );
-        insuranceRegistry.setInsuranceAdjuster(_adjuster, status_);
-        assertEq(insuranceRegistry.adjusters(_adjuster), false);
+        insuranceRegistry.setInsuranceAdjuster(_adjuster, _id, status_);
         vm.stopPrank();
+        assertEq(insuranceRegistry.isAdjuster(_adjuster), false);
     }
 
     function test_setInsuranceAdjuster_fail_invalidAdjuster(
@@ -209,15 +280,15 @@ contract InsuranceRegistryTest is Test, CustomTest {
             approverAdmin_ != address(0) && approverAdmin_ != args.masterAdmin
         );
         address _adjuster = approverAdmin_;
-
         _addApprover(approverAdmin_);
+        string memory _id = "id";
         vm.startPrank(approverAdmin_);
         vm.expectRevert(
             InsuranceRegistry.InsuranceRegistry_InvalidAdjuster.selector
         );
-        insuranceRegistry.setInsuranceAdjuster(_adjuster, status_);
-        assertEq(insuranceRegistry.adjusters(_adjuster), false);
+        insuranceRegistry.setInsuranceAdjuster(_adjuster, _id, status_);
         vm.stopPrank();
+        assertEq(insuranceRegistry.isAdjuster(_adjuster), false);
     }
 
     function test_setInsuranceAdjuster_fail_invalidAdjusterMasterAdmin(
@@ -230,12 +301,13 @@ contract InsuranceRegistryTest is Test, CustomTest {
         address _adjuster = args.masterAdmin;
 
         _addApprover(approverAdmin_);
+        string memory _id = "id";
         vm.startPrank(approverAdmin_);
         vm.expectRevert(
             InsuranceRegistry.InsuranceRegistry_InvalidAdjuster.selector
         );
-        insuranceRegistry.setInsuranceAdjuster(_adjuster, status_);
-        assertEq(insuranceRegistry.adjusters(_adjuster), false);
+        insuranceRegistry.setInsuranceAdjuster(_adjuster, _id, status_);
         vm.stopPrank();
+        assertEq(insuranceRegistry.isAdjuster(_adjuster), false);
     }
 }
