@@ -31,7 +31,7 @@ contract InsuranceRegistryTest is Test, CustomTest {
         );
     }
 
-    function test_addInsuranceAdjuster_fail_nonMasterAdmin(
+    function test_addInsuranceApprover_fail_nonMasterAdmin(
         address nonMasterAdmin_
     ) external {
         vm.assume(nonMasterAdmin_ != args.masterAdmin);
@@ -40,16 +40,16 @@ contract InsuranceRegistryTest is Test, CustomTest {
         vm.expectRevert(
             InsuranceRegistry.InsuranceRegistry_OnlyMasterAdmin.selector
         );
-        insuranceRegistry.addInsuranceAdjuster(_approver);
+        insuranceRegistry.addInsuranceApprover(_approver);
         vm.stopPrank();
     }
 
-    function test_addInsuranceAdjuster_fail_invalidAdjuster() external {
+    function test_addInsuranceApprover_fail_invalidApprover() external {
         vm.startPrank(args.masterAdmin);
         vm.expectRevert(
-            InsuranceRegistry.InsuranceRegistry_InvalidAdjuster.selector
+            InsuranceRegistry.InsuranceRegistry_InvalidApprover.selector
         );
-        insuranceRegistry.addInsuranceAdjuster(args.masterAdmin);
+        insuranceRegistry.addInsuranceApprover(args.masterAdmin);
         vm.stopPrank();
     }
 }
