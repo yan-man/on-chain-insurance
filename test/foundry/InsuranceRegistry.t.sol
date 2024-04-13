@@ -190,14 +190,50 @@ contract InsuranceRegistryTest is Test, CustomTest {
         vm.assume(
             approverAdmin_ != address(0) && approverAdmin_ != args.masterAdmin
         );
-        address adjuster_ = address(0);
+        address _adjuster = address(0);
 
         _addApprover(approverAdmin_);
         vm.startPrank(approverAdmin_);
         vm.expectRevert(
             InsuranceRegistry.InsuranceRegistry_InvalidZeroAddress.selector
         );
-        insuranceRegistry.setInsuranceAdjuster(adjuster_, status_);
+        insuranceRegistry.setInsuranceAdjuster(_adjuster, status_);
+        vm.stopPrank();
+    }
+
+    function test_setInsuranceAdjuster_fail_invalidAdjuster(
+        address approverAdmin_,
+        bool status_
+    ) external {
+        vm.assume(
+            approverAdmin_ != address(0) && approverAdmin_ != args.masterAdmin
+        );
+        address _adjuster = approverAdmin_;
+
+        _addApprover(approverAdmin_);
+        vm.startPrank(approverAdmin_);
+        vm.expectRevert(
+            InsuranceRegistry.InsuranceRegistry_InvalidAdjuster.selector
+        );
+        insuranceRegistry.setInsuranceAdjuster(_adjuster, status_);
+        vm.stopPrank();
+    }
+
+    function test_setInsuranceAdjuster_fail_invalidAdjusterMasterAdmin(
+        address approverAdmin_,
+        bool status_
+    ) external {
+        vm.assume(
+            approverAdmin_ != address(0) && approverAdmin_ != args.masterAdmin
+        );
+        address _adjuster = args.masterAdmin;
+
+        _addApprover(approverAdmin_);
+        vm.startPrank(approverAdmin_);
+        vm.expectRevert(
+            InsuranceRegistry.InsuranceRegistry_InvalidAdjuster.selector
+        );
+        insuranceRegistry.setInsuranceAdjuster(_adjuster, status_);
         vm.stopPrank();
     }
 }
