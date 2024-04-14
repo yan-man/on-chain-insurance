@@ -67,6 +67,19 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         vm.assume(coverageDuration_ > 0 && coverageDuration_ <= 365 days);
 
         vm.startPrank(args.managerContract);
+        uint256 _expectedId = 0;
+        bool _expectedIsActive = true;
+        vm.expectEmit(true, true, true, false);
+        emit IERC721.Transfer(address(0), to_, _expectedId);
+        vm.expectEmit(true, true, true, true);
+        emit InsuranceCoverageNFT.PolicyCreated(
+            _expectedId,
+            to_,
+            premium_,
+            block.timestamp,
+            block.timestamp + coverageDuration_,
+            _expectedIsActive
+        );
         insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
         vm.stopPrank();
 
@@ -85,9 +98,11 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         assertTrue(_isActive);
 
         assertEq(insuranceCoverageNFT.ownerOf(_tokenId), to_);
+        assertEq(insuranceCoverageNFT.balanceOf(to_), 1);
+        assertEq(insuranceCoverageNFT.totalSupply(), 1);
     }
 
-    function test_mint_failInvalidRole(
+    function test_mint_fail_invalidRole(
         address nonManager_,
         address to_,
         uint256 premium_,
@@ -109,5 +124,70 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
         vm.stopPrank();
         assertEq(insuranceCoverageNFT.tokenId(), 0);
+    }
+
+    function test_mint_fail_invalidPremium(
+        address to_,
+        uint256 coverageDuration_
+    ) public {
+        vm.assume(to_ != address(0) && to_.code.length == 0);
+        vm.assume(coverageDuration_ > 0 && coverageDuration_ <= 365 days);
+
+        uint256 _premium = 0;
+        vm.startPrank(args.managerContract);
+        vm.expectRevert(
+            InsuranceCoverageNFT.InsuranceCoverageNFT_InvalidPremium.selector
+        );
+        insuranceCoverageNFT.mint(to_, _premium, coverageDuration_);
+        vm.stopPrank();
+        assertEq(insuranceCoverageNFT.tokenId(), 0);
+    }
+
+    function test_mint_fail_invalidCoverageDuration(
+        address to_,
+        uint256 premium_,
+        uint256 coverageDuration_
+    ) public {
+        vm.assume(to_ != address(0) && to_.code.length == 0);
+        vm.assume(premium_ > 0);
+        vm.assume(coverageDuration_ == 0 || coverageDuration_ > 365 days);
+
+        vm.startPrank(args.managerContract);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                InsuranceCoverageNFT
+                    .InsuranceCoverageNFT_InvalidCoverageDuration
+                    .selector,
+                coverageDuration_
+            )
+        );
+        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        vm.stopPrank();
+        assertEq(insuranceCoverageNFT.tokenId(), 0);
+    }
+
+    function test_burn_success(
+        address to_,
+        uint256 premium_,
+        uint256 coverageDuration_
+    ) public {
+        /// @dev to_ also cannot be a contract address unless it implements onERC721Received
+        vm.assume(to_ != address(0) && to_.code.length == 0);
+        vm.assume(premium_ > 0);
+        vm.assume(coverageDuration_ > 0 && coverageDuration_ <= 365 days);
+
+        vm.startPrank(args.managerContract);
+        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        vm.stopPrank();
+
+        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
+
+        vm.startPrank(to_);
+        vm.expectEmit(true, true, true, false);
+        emit IERC721.Transfer(to_, address(0), _tokenId);
+        vm.expectEmit(true, false, false, false);
+        emit InsuranceCoverageNFT.PolicyInactive(_tokenId);
+        insuranceCoverageNFT.burn(_tokenId);
+        vm.stopPrank();
     }
 }

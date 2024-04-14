@@ -25,6 +25,7 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         uint256 endDate,
         bool isActive
     );
+    event PolicyInactive(uint256 indexed tokenId);
 
     error InsuranceCoverageNFT_NotOwner();
     error InsuranceCoverageNFT_InvalidPremium();
@@ -109,8 +110,10 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
     // }
 
     function burn(uint256 tokenId_) public onlyTokenOwner(tokenId_) {
-        _burn(tokenId);
-        policyDetails[tokenId].isActive = false;
+        _burn(tokenId_);
+        policyDetails[tokenId_].isActive = false;
+
+        emit PolicyInactive(tokenId_);
     }
 
     function supportsInterface(
