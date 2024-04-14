@@ -6,6 +6,7 @@ import {AdjusterOperations} from "./AdjusterOperations.sol";
 import {YieldManager} from "./YieldManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {console} from "forge-std/Test.sol";
 
 contract InsuranceManager {
     enum ApplicationStatus {
@@ -116,7 +117,7 @@ contract InsuranceManager {
         applications[_applicationId] = Application({
             applicant: msg.sender,
             tokenId: 0,
-            value: value_ * (10 ** ERC20(address(paymentToken)).decimals()),
+            value: value_,
             riskFactor: 0, // Initial risk factor set to 0
             premium: 0, // Initial premium set to 0
             submissionTimestamp: block.timestamp,
@@ -182,6 +183,7 @@ contract InsuranceManager {
             _application.premium,
             _calculateDuration(amount_, _application.premium)
         );
+        console.log("calc", _calculateDuration(amount_, _application.premium));
         _application.isPaid = true;
         _application.tokenId = _tokenId;
         applications[applicationId_] = _application;
@@ -210,7 +212,7 @@ contract InsuranceManager {
         applications[applicationId_] = _application;
 
         if (yieldManager.getAvailableBalance() >= _application.value) {
-            yieldManager.withdraw(_application.premium, msg.sender);
+            yieldManager.withdraw(_application.value, msg.sender);
         } else {
             revert InsuranceManager_InsufficientFunds();
         }

@@ -275,7 +275,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     ) external {
         riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -327,7 +327,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     ) external {
         riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -385,7 +385,7 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -416,7 +416,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     ) external {
         riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -444,7 +444,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     ) external {
         riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -472,7 +472,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     ) external {
         riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -511,7 +511,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -560,7 +560,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -603,7 +603,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -649,7 +649,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             insuranceCoverageNFT.MAX_COVERAGE_DURATION() - 1
         );
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -707,9 +707,9 @@ contract InsuranceManagerTest is Test, CustomTest {
 
     function test_claimPolicy_success() external {
         uint256 _riskFactor = 10;
-        uint256 _numSeconds = 1000;
+        uint256 _numSeconds = 10000;
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 10000;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -737,7 +737,6 @@ contract InsuranceManagerTest is Test, CustomTest {
         vm.startPrank(_applicant0);
         mockToken.mint(_applicant0, _amount);
         mockToken.approve(address(insuranceManager), _amount);
-
         insuranceManager.activatePolicy(_applicationId, _amount);
         vm.expectEmit(true, false, false, false);
         emit InsuranceManager.PolicyClaimed(_applicationId);
@@ -746,7 +745,7 @@ contract InsuranceManagerTest is Test, CustomTest {
 
         assertEq(
             mockToken.balanceOf(_applicant0),
-            0,
+            _value1,
             "applicant balance mismatch"
         );
 
@@ -767,9 +766,9 @@ contract InsuranceManagerTest is Test, CustomTest {
 
     function test_claimPolicy_fail_insufficientFunds() external {
         uint256 _riskFactor = 10;
-        uint256 _numSeconds = 1000;
+        uint256 _numSeconds = 10000;
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 10000;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -807,9 +806,9 @@ contract InsuranceManagerTest is Test, CustomTest {
 
     function test_claimPolicy_fail_invalidClaimant() external {
         uint256 _riskFactor = 10;
-        uint256 _numSeconds = 1000;
+        uint256 _numSeconds = 10000;
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 10000;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -854,9 +853,9 @@ contract InsuranceManagerTest is Test, CustomTest {
 
     function test_claimPolicy_fail_invalidApplicationStatus() external {
         uint256 _riskFactor = 10;
-        uint256 _numSeconds = 1000;
+        uint256 _numSeconds = 10000;
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 10000;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
