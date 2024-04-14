@@ -41,31 +41,47 @@ $ forge script script/DeploymentSuite.s.sol --rpc-url $RPC_URL
 There are primarily 4 smart contracts that govern the functionality:
 
 - `InsuranceManager.sol`
--
+- `InsuranceCoverageNFT.sol`
+- `YieldManager.sol`
+- `AdjusterOperations.sol`
+
+### Insurance Application
+
+Manages most of the user-facing implementation for insurance. Users can apply for insurance, creating a pending application. They also provide some hashed data for personal details that might not be best stored directly on-chain. Then their plan is reviewed by an Adjuster, who gives the application a risk score and either approves or rejects the application. Based on that risk score, a premium is calculated.
+
+The User then has a window (of 7 days) to activate the insurance by providing ERC20 token, paying for some amount of subscription time relative to the premium (which is a per-second cost). The User can also extend their coverage up to some maximum amount of time. Later, they can claim a policy and extract the amount of value for the coverage which they have purchased.
+
+### InsuranceCoverageNFT
+
+When the policy is activated by the User, an NFT is generated to represent their insurance claim. The User is free to burn the token if they want to revoke coverage; otherwise, their coverage is only valid up until the end date defined by the amount of ERC20 token they have provided relative to their premium
+
+#### User Lifecycle
 
 This contract manages the majority of the user-facing executions. It provides an interface that users can directly execute transactions from.
 
-Here is the flow for
+Here is the flow for the lifecycle of a User as they apply for insurance, pay for the plan, and claim a policy.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User
-    participant InsuranceManagerContract
-    participant YieldManagerContract
-    participant InsuranceCoverageNFTContract
-    actor InsuranceAdjuster
+    actor Adjuster
+    participant AdjusterOperationsContract
+    actor ApproverAdmin
+    actor MasterAdmin
 
-    User ->> InsuranceManagerContract: submitApplication with value to ensure / car details
-    InsuranceAdjuster ->> InsuranceManagerContract: reviewApplication to approve/reject and determine risk
-    InsuranceManagerContract ->> InsuranceManagerContract: calculate premium
-    User ->> InsuranceManagerContract: activatePolicy
-    User ->> YieldManagerContract: ERC20 Payment Tokens are used to generate yield
-    InsuranceManagerContract ->> InsuranceCoverageNFTContract: mint NFT
-    InsuranceCoverageNFTContract ->> User: receive NFT
-    User ->> InsuranceManagerContract: claimPolicy to get a payout
-    YieldManagerContract ->> User: Returns withdrawn tokens for insured value
+    MasterAdmin ->> AdjusterOperationsContract: set an ApproverAdmin
+    AdjusterOperationsContract ->> ApproverAdmin: grant role
+    ApproverAdmin ->> AdjusterOperationsContract: set Adjusters
+    AdjusterOperationsContract ->> Adjuster: grant role
 ```
+
+#### Access Controls
+
+There are complex access controls, mostly involving the Adjusters. There is a Master Admin defined in the AdjusterOperations contract, with the power of granting Approver roles. Those Approvers have the power to provision Adjusters. There is a requirement of 1 Approver and 3 Adjusters for normal operations to commence. Separation of access controls here provides a more secure way of managing.
+
+### Insurance Adjusters Lifecycle
+
+Here is the flow for the lifecycle of Insurance Adjusters as they get approved.
 
 ## Further Improvements
 
