@@ -10,7 +10,6 @@ import {Test, console} from "forge-std/Test.sol";
 
 import {DeployYieldManager} from "../../script/DeployYieldManager.s.sol";
 import {MockPool} from "../../contracts/mocks/MockPool.sol";
-import {RiskManager} from "../../contracts/libraries/RiskManager.sol";
 import {AdjusterOperations} from "../../contracts/AdjusterOperations.sol";
 import {InsuranceCoverageNFT} from "../../contracts/InsuranceCoverageNFT.sol";
 import {InsuranceManager} from "../../contracts/InsuranceManager.sol";

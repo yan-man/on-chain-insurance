@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {RiskManager} from "./libraries/RiskManager.sol";
 import {InsuranceCoverageNFT} from "./InsuranceCoverageNFT.sol";
 import {AdjusterOperations} from "./AdjusterOperations.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract InsuranceManager {
-    using RiskManager for *;
-
     enum ApplicationStatus {
         Pending,
         Approved,
@@ -138,7 +135,7 @@ contract InsuranceManager {
         }
         if (status_ == ApplicationStatus.Approved) {
             _application.premium =
-                RiskManager.calculatePremium(_application.value, riskFactor_) *
+                _calculatePremium(_application.value, riskFactor_) *
                 (10 ** ERC20(address(paymentToken)).decimals());
             _application.riskFactor = riskFactor_;
         } else if (status_ == ApplicationStatus.Rejected) {
@@ -169,7 +166,7 @@ contract InsuranceManager {
         uint256 _tokenId = insuranceCoverageNFT.mint(
             _application.applicant,
             _application.premium,
-            RiskManager.calculateDuration(amount_, _application.premium)
+            _calculateDuration(amount_, _application.premium)
         );
         _application.isPaid = true;
         _application.tokenId = _tokenId;
@@ -198,5 +195,34 @@ contract InsuranceManager {
         applications[applicationId_] = _application;
 
         emit PolicyActivated(applicationId_);
+    }
+
+    /**
+     * @dev Calculates insurance premium based on the insured value and risk factor.
+     * @param value_ The insured value.
+     * @param riskFactor_ The risk factor, ranging from 1 to 100.
+     * @return premium The calculated premium in paymentToken, not incorporating decimals. Still need to multiply by 10 ** decimals.
+     */
+    function _calculatePremium(
+        uint256 value_,
+        uint256 riskFactor_
+    ) internal pure returns (uint256) {
+        // Base premium is 1% of the value
+        uint256 basePercentageInBIPs = 100;
+        // Additional premium is up to 2% of the value based on riskFactor_
+        uint256 additionalPercentageInBIPs = (200 * riskFactor_) / 100; // Max 400 when riskFactor is 100
+
+        uint256 totalPercentage = basePercentageInBIPs +
+            additionalPercentageInBIPs;
+        uint256 premium = (value_ * totalPercentage) / 10000; // Dividing by 10000 to account for percentage calculation
+
+        return premium;
+    }
+
+    function _calculateDuration(
+        uint256 amount_,
+        uint256 premium_
+    ) internal pure returns (uint256) {
+        return amount_ / premium_;
     }
 }

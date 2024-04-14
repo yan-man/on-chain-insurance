@@ -14,14 +14,12 @@ import {Test, console} from "forge-std/Test.sol";
 import {DeployAdjusterOperations} from "../../script/DeployAdjusterOperations.s.sol";
 import {DeployInsuranceManager} from "../../script/DeployInsuranceManager.s.sol";
 
-import {RiskManager} from "../../contracts/libraries/RiskManager.sol";
 import {AdjusterOperations} from "../../contracts/AdjusterOperations.sol";
 import {InsuranceCoverageNFT} from "../../contracts/InsuranceCoverageNFT.sol";
 import {InsuranceManager} from "../../contracts/InsuranceManager.sol";
 import {SampleERC20} from "../../contracts/mocks/SampleERC20.sol";
 
 contract InsuranceManagerTest is Test, CustomTest {
-    using RiskManager for uint256;
     struct CarDetails {
         string name;
         string model;
