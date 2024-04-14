@@ -15,7 +15,8 @@ contract InsuranceManager is AccessControlEnumerable {
     enum ApplicationStatus {
         Pending,
         Approved,
-        Rejected
+        Rejected,
+        Claimed
     }
     struct Application {
         address applicant;
@@ -131,7 +132,8 @@ contract InsuranceManager is AccessControlEnumerable {
         Application memory _application = applications[applicationId_];
         if (
             _application.status != ApplicationStatus.Pending ||
-            status_ == ApplicationStatus.Pending
+            status_ == ApplicationStatus.Pending ||
+            status_ == ApplicationStatus.Claimed
         ) {
             revert InsuranceManager_InvalidApplicationStatus();
         }
@@ -184,4 +186,14 @@ contract InsuranceManager is AccessControlEnumerable {
             amount_.calculateDuration(_application.premium)
         );
     }
+
+    // function claimPolicy(uint256 applicationId_) external {
+    //     Application memory _application = applications[applicationId_];
+    //     if (_application.status != ApplicationStatus.Approved) {
+    //         revert InsuranceManager_InvalidApplicationStatus();
+    //     }
+    //     insuranceCoverageNFT.burn(_application.tokenId);
+    //     _application.status = ApplicationStatus.Claimed;
+    //     applications[applicationId_] = _application;
+    // }
 }

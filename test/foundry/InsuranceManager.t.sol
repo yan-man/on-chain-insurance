@@ -431,6 +431,34 @@ contract InsuranceManagerTest is Test, CustomTest {
         vm.stopPrank();
     }
 
+    function test_reviewApplication_fail_invalidNewStatusClaimed(
+        uint256 riskFactor_
+    ) external {
+        riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 100;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Claimed;
+        vm.startPrank(adjusterAdmins[0]);
+        vm.expectRevert(
+            InsuranceManager.InsuranceManager_InvalidApplicationStatus.selector
+        );
+        insuranceManager.reviewApplication(
+            _applicationId,
+            riskFactor_,
+            _status0
+        );
+        vm.stopPrank();
+    }
+
     function test_reviewApplication_fail_invalidCurrentStatus(
         uint256 riskFactor_
     ) external {
@@ -597,6 +625,68 @@ contract InsuranceManagerTest is Test, CustomTest {
             InsuranceManager.InsuranceManager_InvalidApplicationStatus.selector
         );
         insuranceManager.activatePolicy(_applicationId, _amount);
+        vm.stopPrank();
+    }
+
+    function test_extendCoverage_success(
+        uint256 riskFactor_,
+        uint256 numSeconds_,
+        address extender_
+    ) public {
+        vm.assume(extender_ != address(0));
+        riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
+        numSeconds_ = bound(
+            numSeconds_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION() - 1
+        );
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 100;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Approved;
+        vm.startPrank(adjusterAdmins[0]);
+        insuranceManager.reviewApplication(
+            _applicationId,
+            riskFactor_,
+            _status0
+        );
+        vm.stopPrank();
+
+        (, , , , , , uint256 _premium1, , , ) = insuranceManager.applications(
+            _applicationId
+        );
+
+        uint256 _amount = (numSeconds_ * _premium1);
+        vm.startPrank(_applicant0);
+        sampleERC20.mint(_applicant0, _amount);
+        sampleERC20.approve(address(insuranceManager), _amount);
+        insuranceManager.activatePolicy(_applicationId, _amount);
+        vm.stopPrank();
+
+        (, uint256 _tokenId, , , , , , , , ) = insuranceManager.applications(
+            _applicationId
+        );
+
+        (, , , uint256 endTime, ) = insuranceCoverageNFT.policyDetails(
+            _tokenId
+        );
+
+        uint256 _extensionTime = insuranceCoverageNFT.MAX_COVERAGE_DURATION() -
+            (endTime - block.timestamp);
+        uint256 _newAmount = (_extensionTime * _premium1);
+
+        vm.startPrank(extender_);
+        sampleERC20.mint(extender_, _newAmount);
+        sampleERC20.approve(address(insuranceManager), _newAmount);
+        insuranceManager.extendCoverage(_applicationId, _newAmount);
         vm.stopPrank();
     }
 }
