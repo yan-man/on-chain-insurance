@@ -83,6 +83,20 @@ There are complex access controls, mostly involving the Adjusters. There is a Ma
 
 Here is the flow for the lifecycle of Insurance Adjusters as they get approved.
 
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Adjuster
+    participant AdjusterOperationsContract
+    actor ApproverAdmin
+    actor MasterAdmin
+
+    MasterAdmin ->> AdjusterOperationsContract: set an ApproverAdmin
+    AdjusterOperationsContract ->> ApproverAdmin: grant role
+    ApproverAdmin ->> AdjusterOperationsContract: set Adjusters
+    AdjusterOperationsContract ->> Adjuster: grant role
+```
+
 ## Further Improvements
 
 There are many potential improvements possible for this project:
