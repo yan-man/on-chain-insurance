@@ -14,12 +14,14 @@ import {Test, console} from "forge-std/Test.sol";
 import {DeployAdjusterOperations} from "../../script/DeployAdjusterOperations.s.sol";
 import {DeployInsuranceManager} from "../../script/DeployInsuranceManager.s.sol";
 
+import {RiskManager} from "../../contracts/libraries/RiskManager.sol";
 import {AdjusterOperations} from "../../contracts/AdjusterOperations.sol";
 import {InsuranceCoverageNFT} from "../../contracts/InsuranceCoverageNFT.sol";
 import {InsuranceManager} from "../../contracts/InsuranceManager.sol";
 import {SampleERC20} from "../../contracts/mocks/SampleERC20.sol";
 
 contract InsuranceManagerTest is Test, CustomTest {
+    using RiskManager for uint256;
     struct CarDetails {
         string name;
         string model;
@@ -36,6 +38,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     address public masterAdmin;
     address[] public approverAdmins;
     address[] public adjusterAdmins;
+    mapping(address => bool) public disallowedApplicants;
 
     function setUp() external {
         masterAdmin = vm.addr(getCounterAndIncrement());
@@ -69,6 +72,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             _approverAdmin = vm.addr(getCounterAndIncrement());
             adjusterOperations.addApprover(_approverAdmin);
             approverAdmins.push(_approverAdmin);
+            disallowedApplicants[_approverAdmin] = true;
         }
         vm.stopPrank();
         vm.startPrank(_approverAdmin);
@@ -78,6 +82,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             _adjusterAdmin = vm.addr(getCounterAndIncrement());
             adjusterOperations.setInsuranceAdjuster(_adjusterAdmin, true);
             adjusterAdmins.push(_adjusterAdmin);
+            disallowedApplicants[_adjusterAdmin] = true;
         }
         vm.stopPrank();
     }
@@ -92,10 +97,14 @@ contract InsuranceManagerTest is Test, CustomTest {
         uint256 value_,
         bytes32 carDetails_,
         address applicant_
-    ) internal {
+    ) internal returns (uint256) {
         vm.startPrank(applicant_);
-        insuranceManager.submitApplication(value_, carDetails_);
+        uint256 _applicationId = insuranceManager.submitApplication(
+            value_,
+            carDetails_
+        );
         vm.stopPrank();
+        return _applicationId;
     }
 
     function test_deploymentParams_success() external view {
@@ -117,11 +126,16 @@ contract InsuranceManagerTest is Test, CustomTest {
         bytes32 carDetails_,
         address applicant_
     ) external {
-        vm.assume(applicant_ != address(0));
-        value_ = bound(value_, 1, insuranceManager.MAX_VALUE());
-        _setUpAdjusterOperations();
+        vm.assume(
+            applicant_ != address(0) &&
+                disallowedApplicants[applicant_] == false
+        );
+        value_ = bound(
+            value_,
+            insuranceManager.MIN_VALUE(),
+            insuranceManager.MAX_VALUE()
+        );
 
-        uint256 _applicationId = insuranceManager.nextApplicationId();
         vm.startPrank(applicant_);
         vm.expectEmit(true, true, false, true);
         emit InsuranceManager.ApplicationSubmitted(
@@ -129,7 +143,10 @@ contract InsuranceManagerTest is Test, CustomTest {
             applicant_,
             value_
         );
-        insuranceManager.submitApplication(value_, carDetails_);
+        uint256 _applicationId = insuranceManager.submitApplication(
+            value_,
+            carDetails_
+        );
         vm.stopPrank();
 
         (
@@ -137,6 +154,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             uint256 _value,
             uint256 _riskFactor,
             uint256 _submissionTimestamp,
+            uint256 _reviewTimestamp,
             uint256 _premium,
             bytes32 _carDetails,
             bool _isPaid,
@@ -144,12 +162,10 @@ contract InsuranceManagerTest is Test, CustomTest {
         ) = insuranceManager.applications(_applicationId);
 
         assertEq(_applicant, applicant_);
-        assertEq(
-            _value,
-            value_ * (10 ** ERC20(address(sampleERC20)).decimals())
-        );
+        assertEq(_value, value_);
         assertEq(_riskFactor, 0);
         assertEq(_submissionTimestamp, block.timestamp);
+        assertEq(_reviewTimestamp, 0);
         assertEq(_premium, 0);
         assertEq(_carDetails, carDetails_);
         assertEq(_isPaid, false);
@@ -161,8 +177,15 @@ contract InsuranceManagerTest is Test, CustomTest {
         bytes32 carDetails_,
         address applicant_
     ) external {
-        vm.assume(applicant_ != address(0));
-        value_ = bound(value_, 1, insuranceManager.MAX_VALUE());
+        vm.assume(
+            applicant_ != address(0) &&
+                disallowedApplicants[applicant_] == false
+        );
+        value_ = bound(
+            value_,
+            insuranceManager.MIN_VALUE(),
+            insuranceManager.MAX_VALUE()
+        );
         _disableAdjuster(adjusterAdmins[0]);
 
         vm.startPrank(applicant_);
@@ -178,8 +201,14 @@ contract InsuranceManagerTest is Test, CustomTest {
         bytes32 carDetails_,
         address applicant_
     ) external {
-        vm.assume(applicant_ != address(0));
-        vm.assume(value_ == 0 || value_ > insuranceManager.MAX_VALUE());
+        vm.assume(
+            applicant_ != address(0) &&
+                disallowedApplicants[applicant_] == false
+        );
+        vm.assume(
+            value_ == insuranceManager.MIN_VALUE() - 1 ||
+                value_ > insuranceManager.MAX_VALUE()
+        );
 
         vm.startPrank(applicant_);
         vm.expectRevert(
@@ -198,8 +227,17 @@ contract InsuranceManagerTest is Test, CustomTest {
         address applicant1_,
         address applicant2_
     ) external {
-        vm.assume(applicant1_ != address(0) && applicant1_ != applicant2_);
-        value_ = bound(value_, 1, insuranceManager.MAX_VALUE());
+        vm.assume(
+            applicant1_ != address(0) &&
+                disallowedApplicants[applicant1_] == false &&
+                disallowedApplicants[applicant2_] == false &&
+                applicant1_ != applicant2_
+        );
+        value_ = bound(
+            value_,
+            insuranceManager.MIN_VALUE(),
+            insuranceManager.MAX_VALUE()
+        );
 
         vm.startPrank(applicant1_);
         insuranceManager.submitApplication(value_, carDetails_);
@@ -216,37 +254,205 @@ contract InsuranceManagerTest is Test, CustomTest {
         vm.stopPrank();
     }
 
-    function test_reviewApplication_success(
-        uint256 riskFactor_,
-        InsuranceManager.ApplicationStatus status_
+    function test_reviewApplication_success_approved(
+        uint256 riskFactor_
     ) external {
-        // vm.assume(
-        //     applicationId_ < insuranceManager.nextApplicationId() &&
-        //         status_ != InsuranceManager.ApplicationStatus.Pending
-        // );
-        // _createPendingApplication();
-        // vm.startPrank(approverAdmins[0]);
-        // vm.expectEmit(true, true, false, true);
-        // emit InsuranceManager.ApplicationReviewed(applicationId_, status_);
-        // insuranceManager.reviewApplication(
-        //     applicationId_,
-        //     riskFactor_,
-        //     status_
-        // );
-        // vm.stopPrank();
-        // (
-        //     address _applicant,
-        //     uint256 _value,
-        //     uint256 _riskFactor,
-        //     uint256 _submissionTimestamp,
-        //     uint256 _premium,
-        //     bytes32 _carDetails,
-        //     bool _isPaid,
-        //     InsuranceManager.ApplicationStatus _status
-        // ) = insuranceManager.applications(applicationId_);
-        // assertEq(_status, status_);
-        // if (status_ == InsuranceManager.ApplicationStatus.Approved) {
-        //     assertEq(_riskFactor, riskFactor_);
-        // }
+        riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 100;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Approved;
+        vm.startPrank(adjusterAdmins[0]);
+        vm.expectEmit(true, false, false, true);
+        emit InsuranceManager.ApplicationReviewed(_applicationId, _status0);
+        insuranceManager.reviewApplication(
+            _applicationId,
+            riskFactor_,
+            _status0
+        );
+        vm.stopPrank();
+        (
+            ,
+            uint256 _value1,
+            uint256 _riskFactor1,
+            ,
+            uint256 _reviewTimestamp1,
+            uint256 _premium1,
+            bytes32 _carDetails1,
+            bool _isPaid1,
+            InsuranceManager.ApplicationStatus _status1
+        ) = insuranceManager.applications(_applicationId);
+
+        assertEq(_value1, _value0, "value mismatch");
+        assertEq(_riskFactor1, riskFactor_, "riskFactor mismatch");
+        assertEq(
+            _reviewTimestamp1,
+            block.timestamp,
+            "reviewTimestamp mismatch"
+        );
+        assertEq(
+            _premium1,
+            _value0.calculatePremium(riskFactor_),
+            "premium mismatch"
+        );
+        assertEq(_carDetails1, _carDetails0, "carDetails mismatch");
+        assertEq(_isPaid1, false, "isPaid mismatch");
+        assertTrue(_status1 == _status0, "status mismatch");
+    }
+
+    function test_reviewApplication_success_rejected(
+        uint256 riskFactor_
+    ) external {
+        riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 100;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Rejected;
+        vm.startPrank(adjusterAdmins[0]);
+        vm.expectEmit(true, false, false, true);
+        emit InsuranceManager.ApplicationReviewed(_applicationId, _status0);
+        insuranceManager.reviewApplication(
+            _applicationId,
+            riskFactor_,
+            _status0
+        );
+        vm.stopPrank();
+        (
+            address _applicant1,
+            uint256 _value1,
+            uint256 _riskFactor1,
+            ,
+            uint256 _reviewTimestamp1,
+            uint256 _premium1,
+            bytes32 _carDetails1,
+            bool _isPaid1,
+            InsuranceManager.ApplicationStatus _status1
+        ) = insuranceManager.applications(_applicationId);
+
+        assertEq(_applicant1, _applicant0, "applicant mismatch");
+        assertEq(_value1, _value0, "value mismatch");
+        assertEq(_riskFactor1, 0, "riskFactor mismatch");
+        assertEq(
+            _reviewTimestamp1,
+            block.timestamp,
+            "reviewTimestamp mismatch"
+        );
+        assertEq(_premium1, 0, "premium mismatch");
+        assertEq(_carDetails1, _carDetails0, "carDetails mismatch");
+        assertEq(_isPaid1, false, "isPaid mismatch");
+        assertTrue(_status1 == _status0, "status mismatch");
+    }
+
+    function test_reviewApplication_fail_invalidAdjuster(
+        uint256 riskFactor_,
+        address nonAdjuster_
+    ) external {
+        vm.assume(
+            nonAdjuster_ != address(0) &&
+                disallowedApplicants[nonAdjuster_] == false
+        );
+        riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 100;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Rejected;
+        vm.startPrank(nonAdjuster_);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                InsuranceManager.InsuranceManager_InvalidAdjuster.selector,
+                nonAdjuster_
+            )
+        );
+        insuranceManager.reviewApplication(
+            _applicationId,
+            riskFactor_,
+            _status0
+        );
+        vm.stopPrank();
+    }
+
+    function test_reviewApplication_fail_invalidNewStatus(
+        uint256 riskFactor_
+    ) external {
+        riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 100;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Pending;
+        vm.startPrank(adjusterAdmins[0]);
+        vm.expectRevert(
+            InsuranceManager.InsuranceManager_InvalidApplicationStatus.selector
+        );
+        insuranceManager.reviewApplication(
+            _applicationId,
+            riskFactor_,
+            _status0
+        );
+        vm.stopPrank();
+    }
+
+    function test_reviewApplication_fail_invalidCurrentStatus(
+        uint256 riskFactor_
+    ) external {
+        riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 100;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Rejected;
+        vm.startPrank(adjusterAdmins[0]);
+        insuranceManager.reviewApplication(
+            _applicationId,
+            riskFactor_,
+            _status0
+        );
+        vm.expectRevert(
+            InsuranceManager.InsuranceManager_InvalidApplicationStatus.selector
+        );
+        insuranceManager.reviewApplication(
+            _applicationId,
+            riskFactor_,
+            _status0
+        );
+        vm.stopPrank();
     }
 }

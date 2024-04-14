@@ -22,13 +22,15 @@ contract InsuranceManager is AccessControlEnumerable {
         uint256 value; // in paymentToken including decimals
         uint256 riskFactor; // 1-100
         uint256 submissionTimestamp;
-        uint256 premium; // in paymentToken, in $0.01/sec (ie 10 ** (decimals - 2))
+        uint256 reviewTimestamp;
+        uint256 premium; // in paymentToken including decimals
         bytes32 carDetails; // keccak256-hashed
         bool isPaid;
         ApplicationStatus status;
     }
 
-    uint256 public constant MAX_VALUE = 1e6; // without decimals, ie $1M
+    uint256 public constant MIN_VALUE = 1e2; // without token decimals, ie $1K
+    uint256 public constant MAX_VALUE = 1e6; // without token decimals, ie $1M
     uint256 public constant MAX_RISK_FACTOR = 100;
     uint256 public constant MAX_TIME_WINDOW = 7 days; // window for premium payment
 
@@ -54,10 +56,24 @@ contract InsuranceManager is AccessControlEnumerable {
     error InsuranceManager_InvalidAdjuster(address adjuster);
     error InsuranceManager_InvalidApplicationStatus();
     error InsuranceManager_NotInitialized();
+    error InsuranceManager_InvalidApplication(address applicant);
 
     modifier requireAdjusterOperationsInitialized() {
         if (!adjusterOperations.isInitialized()) {
             revert InsuranceManager_NotInitialized();
+        }
+        _;
+    }
+
+    modifier requireNonAdmin() {
+        if (
+            adjusterOperations.isAdjuster(msg.sender) ||
+            adjusterOperations.hasRole(
+                adjusterOperations.APPROVER_ADMIN(),
+                msg.sender
+            )
+        ) {
+            revert InsuranceManager_InvalidApplication(msg.sender);
         }
         _;
     }
@@ -71,8 +87,13 @@ contract InsuranceManager is AccessControlEnumerable {
     function submitApplication(
         uint256 value_,
         bytes32 carDetails_
-    ) external requireAdjusterOperationsInitialized {
-        if (value_ == 0 || value_ > MAX_VALUE) {
+    )
+        external
+        requireAdjusterOperationsInitialized
+        requireNonAdmin
+        returns (uint256)
+    {
+        if (value_ < MIN_VALUE || value_ > MAX_VALUE) {
             revert InsuranceManager_InvalidValue(value_);
         }
         if (_uniqueApplicationHashes[carDetails_]) {
@@ -82,16 +103,18 @@ contract InsuranceManager is AccessControlEnumerable {
         _uniqueApplicationHashes[carDetails_] = true;
         applications[_applicationId] = Application({
             applicant: msg.sender,
-            value: value_ * (10 ** ERC20(address(paymentToken)).decimals()),
+            value: value_,
             riskFactor: 0, // Initial risk factor set to 0
             premium: 0, // Initial premium set to 0
             submissionTimestamp: block.timestamp,
+            reviewTimestamp: 0,
             status: ApplicationStatus.Pending,
             isPaid: false,
             carDetails: carDetails_
         });
         emit ApplicationSubmitted(_applicationId, msg.sender, value_);
         nextApplicationId++;
+        return _applicationId;
     }
 
     function reviewApplication(
@@ -111,16 +134,44 @@ contract InsuranceManager is AccessControlEnumerable {
         }
         if (status_ == ApplicationStatus.Approved) {
             _application.premium = _application.value.calculatePremium(
-                _application.premium
+                riskFactor_
             );
+            _application.riskFactor = riskFactor_;
         } else if (status_ == ApplicationStatus.Rejected) {
             _uniqueApplicationHashes[_application.carDetails] = false; // reset the hash as it is no longer in use
         }
-        _application.riskFactor = riskFactor_;
+
         _application.status = status_;
+        _application.reviewTimestamp = block.timestamp;
+        applications[applicationId_] = _application;
 
         emit ApplicationReviewed(applicationId_, status_);
     }
+
+    // function activatePolicy(uint256 applicationId_, uint256 amount_) external {
+    //     Application memory _application = applications[applicationId_];
+    //     if (_application.status != ApplicationStatus.Approved) {
+    //         revert InsuranceManager_InvalidApplicationStatus();
+    //     }
+    //     if (
+    //         block.timestamp > _application.submissionTimestamp + MAX_TIME_WINDOW
+    //     ) {
+    //         revert InsuranceManager_InvalidApplicationStatus();
+    //     }
+
+    //     paymentToken.transferFrom(
+    //         _application.applicant,
+    //         address(this),
+    //         _application.premium
+    //     );
+    //     insuranceNFT.mint(
+    //         _application.applicant,
+    //         _application.premium,
+    //         MAX_TIME_WINDOW
+    //     );
+    //     _application.isPaid = true;
+    //     applications[applicationId_] = _application;
+    // }
 
     // methods:
     // applyForInsurance
