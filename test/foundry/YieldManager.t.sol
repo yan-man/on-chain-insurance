@@ -48,7 +48,7 @@ contract YieldManagerTest is Test, CustomTest {
         yieldManager = deployYieldManager.run();
     }
 
-    function test_deploymentParams() public {
+    function test_deploymentParams() public view {
         assertEq(address(yieldManager.pool()), address(mockPool));
         assertEq(address(yieldManager.paymentToken()), address(mockToken));
         assertEq(address(yieldManager.aTokenAddress()), address(mockAToken));

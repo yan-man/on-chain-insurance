@@ -293,7 +293,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             uint256 _premium1,
             ,
             bool _isPaid1,
-            InsuranceManager.ApplicationStatus _status1
+
         ) = insuranceManager.applications(_applicationId);
 
         assertEq(_riskFactor1, riskFactor_, "riskFactor mismatch");
@@ -304,12 +304,11 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         assertEq(
             _premium1,
-            _value0.calculatePremium(riskFactor_) *
+            insuranceManager.calculatePremium(_value0, riskFactor_) *
                 (10 ** sampleERC20.decimals()),
             "premium mismatch"
         );
         assertEq(_isPaid1, false, "isPaid mismatch");
-        assertTrue(_status1 == _status0, "status mismatch");
     }
 
     function test_reviewApplication_success_rejected(

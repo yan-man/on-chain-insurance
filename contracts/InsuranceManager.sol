@@ -135,7 +135,7 @@ contract InsuranceManager {
         }
         if (status_ == ApplicationStatus.Approved) {
             _application.premium =
-                _calculatePremium(_application.value, riskFactor_) *
+                calculatePremium(_application.value, riskFactor_) *
                 (10 ** ERC20(address(paymentToken)).decimals());
             _application.riskFactor = riskFactor_;
         } else if (status_ == ApplicationStatus.Rejected) {
@@ -179,7 +179,7 @@ contract InsuranceManager {
         Application memory _application = applications[applicationId_];
         insuranceCoverageNFT.extendCoverage(
             _application.tokenId,
-            amount_.calculateDuration(_application.premium)
+            _calculateDuration(amount_, _application.premium)
         );
     }
 
@@ -203,10 +203,10 @@ contract InsuranceManager {
      * @param riskFactor_ The risk factor, ranging from 1 to 100.
      * @return premium The calculated premium in paymentToken, not incorporating decimals. Still need to multiply by 10 ** decimals.
      */
-    function _calculatePremium(
+    function calculatePremium(
         uint256 value_,
         uint256 riskFactor_
-    ) internal pure returns (uint256) {
+    ) public pure returns (uint256) {
         // Base premium is 1% of the value
         uint256 basePercentageInBIPs = 100;
         // Additional premium is up to 2% of the value based on riskFactor_
