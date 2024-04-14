@@ -5,10 +5,10 @@ import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721 {
-    bytes32 public constant MANAGER_ADMIN = keccak256("MANAGER_ADMIN");
+    bytes32 public constant MANAGER_CONTRACT = keccak256("MANAGER_CONTRACT");
 
-    constructor(address managerAdmin_) ERC721("InsuranceCoverage", "ICNFT") {
-        _grantRole(MANAGER_ADMIN, managerAdmin_);
+    constructor(address managerContract_) ERC721("InsuranceCoverage", "ICNFT") {
+        _grantRole(MANAGER_CONTRACT, managerContract_);
     }
 
     // functions:

@@ -7,14 +7,14 @@ import {InsuranceCoverageNFT} from "../contracts/InsuranceCoverageNFT.sol";
 /// @title Script to deploy InsuranceCoverageNFT contract
 contract DeployInsuranceCoverageNFT is Script {
     struct InsuranceCoverageNFTArgs {
-        address masterAdmin;
+        address managerContract;
     }
     InsuranceCoverageNFTArgs public args;
     InsuranceCoverageNFT public insuranceCoverageNFT;
 
     function run() external returns (InsuranceCoverageNFT) {
         vm.startBroadcast();
-        insuranceCoverageNFT = new InsuranceCoverageNFT(args.masterAdmin);
+        insuranceCoverageNFT = new InsuranceCoverageNFT(args.managerContract);
         vm.stopBroadcast();
         return insuranceCoverageNFT;
     }

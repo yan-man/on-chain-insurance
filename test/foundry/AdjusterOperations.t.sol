@@ -18,7 +18,9 @@ contract AdjusterOperationsTest is Test, CustomTest {
         deployAdjusterOperations = new DeployAdjusterOperations();
 
         address _masterAdmin = vm.addr(getCounterAndIncrement());
-        args = DeployAdjusterOperations.AdjusterOperationsArgs(_masterAdmin);
+        args = DeployAdjusterOperations.AdjusterOperationsArgs({
+            masterAdmin: _masterAdmin
+        });
         deployAdjusterOperations.setConstructorArgs(args);
 
         adjusterOperations = deployAdjusterOperations.run();
