@@ -109,3 +109,5 @@ There are many potential improvements possible for this project:
 - upgradability: including upgradable contracts would improve the flexibility of the system long-term to adapt to some of the changes described. This is particularly useful if there is already tokens stored in the contract and migration is cumbersome.
 
 ## Appendix
+
+![code cov](./codecov.png)
