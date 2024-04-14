@@ -3,12 +3,15 @@ pragma solidity ^0.8.24;
 
 import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
+import {RiskManager} from "./libraries/RiskManager.sol";
 import {InsuranceCoverageNFT} from "./InsuranceCoverageNFT.sol";
 import {AdjusterOperations} from "./AdjusterOperations.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract InsuranceManager is AccessControlEnumerable {
+    using RiskManager for uint256;
+
     enum ApplicationStatus {
         Pending,
         Approved,
@@ -41,9 +44,23 @@ contract InsuranceManager is AccessControlEnumerable {
         address indexed applicant,
         uint256 value
     );
+    event ApplicationReviewed(
+        uint256 indexed applicationId,
+        ApplicationStatus status
+    );
 
     error InsuranceManager_InvalidValue(uint256 value);
     error InsuranceManager_InvalidCarDetails(bytes32 carDetails);
+    error InsuranceManager_InvalidAdjuster(address adjuster);
+    error InsuranceManager_InvalidApplicationStatus();
+    error InsuranceManager_NotInitialized();
+
+    modifier requireAdjusterOperationsInitialized() {
+        if (!adjusterOperations.isInitialized()) {
+            revert InsuranceManager_NotInitialized();
+        }
+        _;
+    }
 
     constructor(address adjusterOpsAddress_, address paymentTokenAddress_) {
         insuranceNFT = new InsuranceCoverageNFT(address(this));
@@ -51,7 +68,10 @@ contract InsuranceManager is AccessControlEnumerable {
         paymentToken = IERC20(paymentTokenAddress_);
     }
 
-    function submitApplication(uint256 value_, bytes32 carDetails_) public {
+    function submitApplication(
+        uint256 value_,
+        bytes32 carDetails_
+    ) external requireAdjusterOperationsInitialized {
         if (value_ == 0 || value_ > MAX_VALUE) {
             revert InsuranceManager_InvalidValue(value_);
         }
@@ -72,6 +92,34 @@ contract InsuranceManager is AccessControlEnumerable {
         });
         emit ApplicationSubmitted(_applicationId, msg.sender, value_);
         nextApplicationId++;
+    }
+
+    function reviewApplication(
+        uint256 applicationId_,
+        uint256 riskFactor_,
+        ApplicationStatus status_
+    ) external {
+        if (!adjusterOperations.isAdjuster(msg.sender)) {
+            revert InsuranceManager_InvalidAdjuster(msg.sender);
+        }
+        Application memory _application = applications[applicationId_];
+        if (
+            _application.status != ApplicationStatus.Pending ||
+            status_ == ApplicationStatus.Pending
+        ) {
+            revert InsuranceManager_InvalidApplicationStatus();
+        }
+        if (status_ == ApplicationStatus.Approved) {
+            _application.premium = _application.value.calculatePremium(
+                _application.premium
+            );
+        } else if (status_ == ApplicationStatus.Rejected) {
+            _uniqueApplicationHashes[_application.carDetails] = false; // reset the hash as it is no longer in use
+        }
+        _application.riskFactor = riskFactor_;
+        _application.status = status_;
+
+        emit ApplicationReviewed(applicationId_, status_);
     }
 
     // methods:

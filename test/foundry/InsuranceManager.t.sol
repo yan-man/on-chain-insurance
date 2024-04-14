@@ -33,14 +33,17 @@ contract InsuranceManagerTest is Test, CustomTest {
     AdjusterOperations public adjusterOperations;
     InsuranceManager public insuranceManager;
     SampleERC20 public sampleERC20;
+    address public masterAdmin;
+    address[] public approverAdmins;
+    address[] public adjusterAdmins;
 
     function setUp() external {
-        address _masterAdmin = vm.addr(getCounterAndIncrement());
+        masterAdmin = vm.addr(getCounterAndIncrement());
 
         DeployAdjusterOperations deployAdjusterOperations = new DeployAdjusterOperations();
         deployAdjusterOperations.setConstructorArgs(
             DeployAdjusterOperations.AdjusterOperationsArgs({
-                masterAdmin: _masterAdmin
+                masterAdmin: masterAdmin
             })
         );
         adjusterOperations = deployAdjusterOperations.run();
@@ -55,9 +58,38 @@ contract InsuranceManagerTest is Test, CustomTest {
         deployInsuranceManager.setConstructorArgs(args);
 
         insuranceManager = deployInsuranceManager.run();
+        _setUpAdjusterOperations();
+    }
+
+    function _setUpAdjusterOperations() internal {
+        uint256 _numApprovers = adjusterOperations.REQUIRED_APPROVERS();
+        address _approverAdmin;
+        vm.startPrank(masterAdmin);
+        for (uint256 i = _numApprovers; i > 0; --i) {
+            _approverAdmin = vm.addr(getCounterAndIncrement());
+            adjusterOperations.addApprover(_approverAdmin);
+            approverAdmins.push(_approverAdmin);
+        }
+        vm.stopPrank();
+        vm.startPrank(_approverAdmin);
+        uint256 numAdjusters = adjusterOperations.REQUIRED_ADJUSTERS();
+        address _adjusterAdmin;
+        for (uint256 i = numAdjusters; i > 0; --i) {
+            _adjusterAdmin = vm.addr(getCounterAndIncrement());
+            adjusterOperations.setInsuranceAdjuster(_adjusterAdmin, true);
+            adjusterAdmins.push(_adjusterAdmin);
+        }
+        vm.stopPrank();
+    }
+
+    function _disableAdjuster(address adjuster_) internal {
+        vm.startPrank(approverAdmins[0]);
+        adjusterOperations.setInsuranceAdjuster(adjuster_, false);
+        vm.stopPrank();
     }
 
     function test_deploymentParams_success() external view {
+        assertTrue(adjusterOperations.isInitialized());
         assertEq(
             address(insuranceManager.adjusterOperations()),
             address(adjusterOperations)
@@ -77,6 +109,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     ) external {
         vm.assume(applicant_ != address(0));
         value_ = bound(value_, 1, insuranceManager.MAX_VALUE());
+        _setUpAdjusterOperations();
 
         uint256 _applicationId = insuranceManager.nextApplicationId();
         vm.startPrank(applicant_);
