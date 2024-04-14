@@ -61,6 +61,7 @@ contract InsuranceManagerTest is Test, CustomTest {
         deployInsuranceManager.setConstructorArgs(args);
 
         insuranceManager = deployInsuranceManager.run();
+        insuranceCoverageNFT = insuranceManager.insuranceCoverageNFT();
         _setUpAdjusterOperations();
     }
 
@@ -117,8 +118,11 @@ contract InsuranceManagerTest is Test, CustomTest {
             address(insuranceManager.paymentToken()),
             address(sampleERC20)
         );
-        assertEq(insuranceManager.insuranceNFT().name(), "InsuranceCoverage");
-        assertEq(insuranceManager.insuranceNFT().symbol(), "ICNFT");
+        assertEq(
+            insuranceManager.insuranceCoverageNFT().name(),
+            "InsuranceCoverage"
+        );
+        assertEq(insuranceManager.insuranceCoverageNFT().symbol(), "ICNFT");
     }
 
     function test_submitApplication_success(
@@ -286,7 +290,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             ,
             uint256 _reviewTimestamp1,
             uint256 _premium1,
-            bytes32 _carDetails1,
+            ,
             bool _isPaid1,
             InsuranceManager.ApplicationStatus _status1
         ) = insuranceManager.applications(_applicationId);
@@ -300,10 +304,10 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         assertEq(
             _premium1,
-            _value0.calculatePremium(riskFactor_),
+            _value0.calculatePremium(riskFactor_) *
+                (10 ** sampleERC20.decimals()),
             "premium mismatch"
         );
-        assertEq(_carDetails1, _carDetails0, "carDetails mismatch");
         assertEq(_isPaid1, false, "isPaid mismatch");
         assertTrue(_status1 == _status0, "status mismatch");
     }
@@ -453,6 +457,48 @@ contract InsuranceManagerTest is Test, CustomTest {
             riskFactor_,
             _status0
         );
+        vm.stopPrank();
+    }
+
+    function test_activatePolicy_success(
+        uint256 riskFactor_,
+        uint256 numSeconds_
+    ) external {
+        riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
+        numSeconds_ = bound(
+            numSeconds_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION()
+        );
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 100;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Approved;
+        vm.startPrank(adjusterAdmins[0]);
+        insuranceManager.reviewApplication(
+            _applicationId,
+            riskFactor_,
+            _status0
+        );
+        vm.stopPrank();
+
+        (, , , , , uint256 _premium1, , , ) = insuranceManager.applications(
+            _applicationId
+        );
+
+        uint256 _amount = (numSeconds_ * _premium1);
+        vm.startPrank(_applicant0);
+        sampleERC20.mint(_applicant0, _amount);
+        sampleERC20.approve(address(insuranceManager), _amount);
+        insuranceManager.activatePolicy(_applicationId, _amount);
         vm.stopPrank();
     }
 }

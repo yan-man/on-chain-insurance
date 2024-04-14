@@ -35,7 +35,7 @@ contract InsuranceManager is AccessControlEnumerable {
     uint256 public constant MAX_TIME_WINDOW = 7 days; // window for premium payment
 
     mapping(uint256 => Application) public applications; // applicationId => Application
-    InsuranceCoverageNFT public insuranceNFT;
+    InsuranceCoverageNFT public insuranceCoverageNFT;
     AdjusterOperations public adjusterOperations;
     IERC20 public paymentToken;
     uint256 public nextApplicationId;
@@ -79,7 +79,7 @@ contract InsuranceManager is AccessControlEnumerable {
     }
 
     constructor(address adjusterOpsAddress_, address paymentTokenAddress_) {
-        insuranceNFT = new InsuranceCoverageNFT(address(this));
+        insuranceCoverageNFT = new InsuranceCoverageNFT(address(this));
         adjusterOperations = AdjusterOperations(adjusterOpsAddress_);
         paymentToken = IERC20(paymentTokenAddress_);
     }
@@ -133,9 +133,9 @@ contract InsuranceManager is AccessControlEnumerable {
             revert InsuranceManager_InvalidApplicationStatus();
         }
         if (status_ == ApplicationStatus.Approved) {
-            _application.premium = _application.value.calculatePremium(
-                riskFactor_
-            );
+            _application.premium =
+                _application.value.calculatePremium(riskFactor_) *
+                (10 ** ERC20(address(paymentToken)).decimals());
             _application.riskFactor = riskFactor_;
         } else if (status_ == ApplicationStatus.Rejected) {
             _uniqueApplicationHashes[_application.carDetails] = false; // reset the hash as it is no longer in use
@@ -148,33 +148,32 @@ contract InsuranceManager is AccessControlEnumerable {
         emit ApplicationReviewed(applicationId_, status_);
     }
 
-    // function activatePolicy(uint256 applicationId_, uint256 amount_) external {
-    //     Application memory _application = applications[applicationId_];
-    //     if (_application.status != ApplicationStatus.Approved) {
-    //         revert InsuranceManager_InvalidApplicationStatus();
-    //     }
-    //     if (
-    //         block.timestamp > _application.submissionTimestamp + MAX_TIME_WINDOW
-    //     ) {
-    //         revert InsuranceManager_InvalidApplicationStatus();
-    //     }
+    function activatePolicy(uint256 applicationId_, uint256 amount_) external {
+        Application memory _application = applications[applicationId_];
+        if (_application.status != ApplicationStatus.Approved) {
+            revert InsuranceManager_InvalidApplicationStatus();
+        }
+        if (
+            block.timestamp > _application.submissionTimestamp + MAX_TIME_WINDOW
+        ) {
+            revert InsuranceManager_InvalidApplicationStatus();
+        }
 
-    //     paymentToken.transferFrom(
-    //         _application.applicant,
-    //         address(this),
-    //         _application.premium
-    //     );
-    //     insuranceNFT.mint(
-    //         _application.applicant,
-    //         _application.premium,
-    //         MAX_TIME_WINDOW
-    //     );
-    //     _application.isPaid = true;
-    //     applications[applicationId_] = _application;
+        paymentToken.transferFrom(
+            _application.applicant,
+            address(this),
+            amount_
+        );
+        insuranceCoverageNFT.mint(
+            _application.applicant,
+            _application.premium,
+            amount_.calculateDuration(_application.premium)
+        );
+        _application.isPaid = true;
+        applications[applicationId_] = _application;
+    }
+
+    // function claimPolicy (uint256 tokenId_) external {
+    //     insuranceCoverageNFT.burn(tokenId_);
     // }
-
-    // methods:
-    // applyForInsurance
-    // approveInsurance
-    // claimInsurance
 }

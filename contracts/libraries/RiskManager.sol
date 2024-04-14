@@ -6,7 +6,7 @@ library RiskManager {
      * @dev Calculates insurance premium based on the insured value and risk factor.
      * @param value_ The insured value.
      * @param riskFactor_ The risk factor, ranging from 1 to 100.
-     * @return premium The calculated premium in paymentToken, not incorporating decimals.
+     * @return premium The calculated premium in paymentToken, not incorporating decimals. Still need to multiply by 10 ** decimals.
      */
     function calculatePremium(
         uint256 value_,
