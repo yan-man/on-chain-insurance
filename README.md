@@ -30,6 +30,8 @@ Fill in `.env.example` with required values.
 
 The values in `.env.example` are for Sepolia so `RPC_URL` should also correspond to Sepolia.
 
+The `AdjusterOperations.sol` contract must be deployed first. Then the `InsuranceManager.sol` contract can be deployed, which also in turn deploys the 2 other contracts during its deployment.
+
 To simulate a deployment:
 
 ```
