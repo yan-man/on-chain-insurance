@@ -40,11 +40,14 @@ $ forge script script/DeploymentSuite.s.sol --rpc-url $RPC_URL
 
 There are primarily 4 smart contracts that govern the functionality:
 
-### `InsuranceManager.sol`
+- `InsuranceManager.sol`
+-
 
 This contract manages the majority of the user-facing executions. It provides an interface that users can directly execute transactions from.
 
-```
+Here is the flow for
+
+```mermaid
 sequenceDiagram
     autonumber
     actor User
