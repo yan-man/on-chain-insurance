@@ -7,6 +7,8 @@ import {YieldManager} from "./YieldManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+/// @title InsuranceManager
+/// @author YBM
 contract InsuranceManager {
     enum ApplicationStatus {
         Pending,
@@ -82,7 +84,7 @@ contract InsuranceManager {
     }
 
     constructor(
-        address adjusterOpsAddress_,
+        address adjusterOperationsAddress_,
         address paymentTokenAddress_,
         address poolAddress_
     ) {
@@ -92,10 +94,13 @@ contract InsuranceManager {
             poolAddress_,
             paymentTokenAddress_
         );
-        adjusterOperations = AdjusterOperations(adjusterOpsAddress_);
+        adjusterOperations = AdjusterOperations(adjusterOperationsAddress_);
         paymentToken = IERC20(paymentTokenAddress_);
     }
 
+    /// submitApplication
+    /// @param value_ The insured value in paymentToken with decimals
+    /// @param carDetails_ The keccak256-hashed car details
     function submitApplication(
         uint256 value_,
         bytes32 carDetails_
@@ -130,6 +135,10 @@ contract InsuranceManager {
         return _applicationId;
     }
 
+    /// reviewApplication
+    /// @param applicationId_ The application ID
+    /// @param riskFactor_ The risk factor, ranging from 1 to 100
+    /// @param status_ The application status
     function reviewApplication(
         uint256 applicationId_,
         uint256 riskFactor_,
