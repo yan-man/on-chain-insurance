@@ -10,18 +10,16 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {CustomTest} from "../helpers/CustomTest.t.sol";
 import {Test, console} from "forge-std/Test.sol";
 
-// import {DeployInsuranceCoverageNFT} from "../../script/DeployInsuranceCoverageNFT.s.sol";
+import {AdjusterOperations} from "../../contracts/AdjusterOperations.sol";
 import {DeployAdjusterOperations} from "../../script/DeployAdjusterOperations.s.sol";
 import {DeployInsuranceManager} from "../../script/DeployInsuranceManager.s.sol";
-
-import {RiskManager} from "../../contracts/libraries/RiskManager.sol";
-import {AdjusterOperations} from "../../contracts/AdjusterOperations.sol";
 import {InsuranceCoverageNFT} from "../../contracts/InsuranceCoverageNFT.sol";
 import {InsuranceManager} from "../../contracts/InsuranceManager.sol";
+import {MockPool} from "../../contracts/mocks/MockPool.sol";
 import {SampleERC20} from "../../contracts/mocks/SampleERC20.sol";
+import {YieldManager} from "../../contracts/YieldManager.sol";
 
 contract InsuranceManagerTest is Test, CustomTest {
-    using RiskManager for uint256;
     struct CarDetails {
         string name;
         string model;
@@ -34,7 +32,11 @@ contract InsuranceManagerTest is Test, CustomTest {
     InsuranceCoverageNFT public insuranceCoverageNFT;
     AdjusterOperations public adjusterOperations;
     InsuranceManager public insuranceManager;
-    SampleERC20 public sampleERC20;
+    YieldManager public yieldManager;
+    MockPool public mockPool;
+    SampleERC20 public mockToken;
+    SampleERC20 public mockAToken;
+
     address public masterAdmin;
     address[] public approverAdmins;
     address[] public adjusterAdmins;
@@ -42,6 +44,17 @@ contract InsuranceManagerTest is Test, CustomTest {
 
     function setUp() external {
         masterAdmin = vm.addr(getCounterAndIncrement());
+
+        address[] memory tokens = new address[](1);
+        address[] memory aTokens = new address[](1);
+
+        mockToken = new SampleERC20();
+        mockAToken = new SampleERC20();
+
+        tokens[0] = address(mockToken);
+        aTokens[0] = address(mockAToken);
+
+        mockPool = new MockPool(tokens, aTokens);
 
         DeployAdjusterOperations deployAdjusterOperations = new DeployAdjusterOperations();
         deployAdjusterOperations.setConstructorArgs(
@@ -51,17 +64,17 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         adjusterOperations = deployAdjusterOperations.run();
 
-        sampleERC20 = new SampleERC20();
-
         deployInsuranceManager = new DeployInsuranceManager();
         args = DeployInsuranceManager.InsuranceManagerArgs({
             adjusterOperationsAddress: address(adjusterOperations),
-            paymentTokenAddress: address(sampleERC20)
+            paymentTokenAddress: address(mockToken),
+            poolAddress: address(mockPool)
         });
         deployInsuranceManager.setConstructorArgs(args);
 
         insuranceManager = deployInsuranceManager.run();
         insuranceCoverageNFT = insuranceManager.insuranceCoverageNFT();
+        yieldManager = insuranceManager.yieldManager();
         _setUpAdjusterOperations();
     }
 
@@ -114,10 +127,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             address(insuranceManager.adjusterOperations()),
             address(adjusterOperations)
         );
-        assertEq(
-            address(insuranceManager.paymentToken()),
-            address(sampleERC20)
-        );
+        assertEq(address(insuranceManager.paymentToken()), address(mockToken));
         assertEq(
             insuranceManager.insuranceCoverageNFT().name(),
             "InsuranceCoverage"
@@ -265,7 +275,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     ) external {
         riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -295,7 +305,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             uint256 _premium1,
             ,
             bool _isPaid1,
-            InsuranceManager.ApplicationStatus _status1
+
         ) = insuranceManager.applications(_applicationId);
 
         assertEq(_riskFactor1, riskFactor_, "riskFactor mismatch");
@@ -306,12 +316,10 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         assertEq(
             _premium1,
-            _value0.calculatePremium(riskFactor_) *
-                (10 ** sampleERC20.decimals()),
+            insuranceManager.calculatePremium(_value0, riskFactor_),
             "premium mismatch"
         );
         assertEq(_isPaid1, false, "isPaid mismatch");
-        assertTrue(_status1 == _status0, "status mismatch");
     }
 
     function test_reviewApplication_success_rejected(
@@ -319,7 +327,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     ) external {
         riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -377,7 +385,7 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -408,7 +416,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     ) external {
         riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -436,7 +444,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     ) external {
         riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -464,7 +472,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     ) external {
         riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -503,7 +511,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -528,8 +536,8 @@ contract InsuranceManagerTest is Test, CustomTest {
 
         uint256 _amount = (numSeconds_ * _premium1);
         vm.startPrank(_applicant0);
-        sampleERC20.mint(_applicant0, _amount);
-        sampleERC20.approve(address(insuranceManager), _amount);
+        mockToken.mint(_applicant0, _amount);
+        mockToken.approve(address(insuranceManager), _amount);
         vm.expectEmit(true, false, false, false);
         emit InsuranceManager.PolicyActivated(_applicationId);
         insuranceManager.activatePolicy(_applicationId, _amount);
@@ -552,7 +560,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -595,7 +603,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -641,7 +649,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             insuranceCoverageNFT.MAX_COVERAGE_DURATION() - 1
         );
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 100;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -666,8 +674,8 @@ contract InsuranceManagerTest is Test, CustomTest {
 
         uint256 _amount = (numSeconds_ * _premium1);
         vm.startPrank(_applicant0);
-        sampleERC20.mint(_applicant0, _amount);
-        sampleERC20.approve(address(insuranceManager), _amount);
+        mockToken.mint(_applicant0, _amount);
+        mockToken.approve(address(insuranceManager), _amount);
         insuranceManager.activatePolicy(_applicationId, _amount);
         vm.stopPrank();
 
@@ -684,17 +692,24 @@ contract InsuranceManagerTest is Test, CustomTest {
         uint256 _newAmount = (_extensionTime * _premium1);
 
         vm.startPrank(extender_);
-        sampleERC20.mint(extender_, _newAmount);
-        sampleERC20.approve(address(insuranceManager), _newAmount);
+        mockToken.mint(extender_, _newAmount);
+        mockToken.approve(address(insuranceManager), _newAmount);
         insuranceManager.extendCoverage(_applicationId, _newAmount);
+        vm.stopPrank();
+    }
+
+    function _depositForYield(uint256 amount_) internal {
+        vm.startPrank(yieldManager.managerContract());
+        mockToken.mint(address(yieldManager), amount_);
+        yieldManager.deposit(amount_);
         vm.stopPrank();
     }
 
     function test_claimPolicy_success() external {
         uint256 _riskFactor = 10;
-        uint256 _numSeconds = 1000;
+        uint256 _numSeconds = 10000;
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 10000;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -713,20 +728,26 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         vm.stopPrank();
 
-        (, , , , , , uint256 _premium1, , , ) = insuranceManager.applications(
-            _applicationId
-        );
+        (, , uint256 _value1, , , , uint256 _premium1, , , ) = insuranceManager
+            .applications(_applicationId);
+
+        _depositForYield(_value1);
 
         uint256 _amount = (_numSeconds * _premium1);
         vm.startPrank(_applicant0);
-        sampleERC20.mint(_applicant0, _amount);
-        sampleERC20.approve(address(insuranceManager), _amount);
-
+        mockToken.mint(_applicant0, _amount);
+        mockToken.approve(address(insuranceManager), _amount);
         insuranceManager.activatePolicy(_applicationId, _amount);
         vm.expectEmit(true, false, false, false);
-        emit InsuranceManager.PolicyActivated(_applicationId);
+        emit InsuranceManager.PolicyClaimed(_applicationId);
         insuranceManager.claimPolicy(_applicationId);
         vm.stopPrank();
+
+        assertEq(
+            mockToken.balanceOf(_applicant0),
+            _value1,
+            "applicant balance mismatch"
+        );
 
         (
             ,
@@ -743,11 +764,11 @@ contract InsuranceManagerTest is Test, CustomTest {
         assertTrue(_status == InsuranceManager.ApplicationStatus.Claimed);
     }
 
-    function test_claimPolicy_fail_invalidClaimant() external {
+    function test_claimPolicy_fail_insufficientFunds() external {
         uint256 _riskFactor = 10;
-        uint256 _numSeconds = 1000;
+        uint256 _numSeconds = 10000;
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 10000;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -772,8 +793,48 @@ contract InsuranceManagerTest is Test, CustomTest {
 
         uint256 _amount = (_numSeconds * _premium1);
         vm.startPrank(_applicant0);
-        sampleERC20.mint(_applicant0, _amount);
-        sampleERC20.approve(address(insuranceManager), _amount);
+        mockToken.mint(_applicant0, _amount);
+        mockToken.approve(address(insuranceManager), _amount);
+
+        insuranceManager.activatePolicy(_applicationId, _amount);
+        vm.expectRevert(
+            InsuranceManager.InsuranceManager_InsufficientFunds.selector
+        );
+        insuranceManager.claimPolicy(_applicationId);
+        vm.stopPrank();
+    }
+
+    function test_claimPolicy_fail_invalidClaimant() external {
+        uint256 _riskFactor = 10;
+        uint256 _numSeconds = 10000;
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 100e18;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Approved;
+        vm.startPrank(adjusterAdmins[0]);
+        insuranceManager.reviewApplication(
+            _applicationId,
+            _riskFactor,
+            _status0
+        );
+        vm.stopPrank();
+
+        (, , , , , , uint256 _premium1, , , ) = insuranceManager.applications(
+            _applicationId
+        );
+
+        uint256 _amount = (_numSeconds * _premium1);
+        vm.startPrank(_applicant0);
+        mockToken.mint(_applicant0, _amount);
+        mockToken.approve(address(insuranceManager), _amount);
 
         insuranceManager.activatePolicy(_applicationId, _amount);
 
@@ -792,9 +853,9 @@ contract InsuranceManagerTest is Test, CustomTest {
 
     function test_claimPolicy_fail_invalidApplicationStatus() external {
         uint256 _riskFactor = 10;
-        uint256 _numSeconds = 1000;
+        uint256 _numSeconds = 10000;
         address _applicant0 = vm.addr(getCounterAndIncrement());
-        uint256 _value0 = 10000;
+        uint256 _value0 = 100e18;
         bytes32 _carDetails0 = bytes32("carDetails");
         uint256 _applicationId = _createPendingApplication(
             _value0,
@@ -819,10 +880,12 @@ contract InsuranceManagerTest is Test, CustomTest {
 
         uint256 _amount = (_numSeconds * _premium1);
         vm.startPrank(_applicant0);
-        sampleERC20.mint(_applicant0, _amount);
-        sampleERC20.approve(address(insuranceManager), _amount);
+        mockToken.mint(_applicant0, _amount);
+        mockToken.approve(address(insuranceManager), _amount);
 
         insuranceManager.activatePolicy(_applicationId, _amount);
+
+        _depositForYield(_value0);
 
         vm.stopPrank();
         vm.startPrank(_applicant0);

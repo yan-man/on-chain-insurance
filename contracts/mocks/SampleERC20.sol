@@ -9,4 +9,8 @@ contract SampleERC20 is ERC20 {
     function mint(address recipient_, uint256 amount) public {
         _mint(recipient_, amount);
     }
+
+    function burn(address recipient_, uint256 amount) public {
+        _burn(recipient_, amount);
+    }
 }
