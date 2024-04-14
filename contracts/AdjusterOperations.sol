@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
+/// @title AdjusterOperations
+/// @author YBM
 contract AdjusterOperations is AccessControlEnumerable {
     struct Adjuster {
         address adjuster;
@@ -30,6 +32,9 @@ contract AdjusterOperations is AccessControlEnumerable {
         _grantRole(MASTER_ADMIN, masterAdmin_);
     }
 
+    /// @dev addApprover add an Approver admin, that can add Adjusters
+    /// @dev only Master admin can add Approvers
+    /// @param approver_ address of the approver to be added
     function addApprover(address approver_) external onlyRole(MASTER_ADMIN) {
         if (approver_ == address(0)) {
             revert AdjusterOperations_InvalidZeroAddress();
@@ -41,10 +46,17 @@ contract AdjusterOperations is AccessControlEnumerable {
         _grantRole(APPROVER_ADMIN, approver_);
     }
 
+    /// @dev removeApprover remove an Approver admin
+    /// @dev only Master admin can remove Approvers
+    /// @param approver_ address of the approver to be removed
     function removeApprover(address approver_) external onlyRole(MASTER_ADMIN) {
         _revokeRole(APPROVER_ADMIN, approver_);
     }
 
+    /// @dev setInsuranceAdjuster set the status of an adjuster
+    /// @dev only Approver admin can set adjuster status
+    /// @param adjuster_ address of the adjuster
+    /// @param status_ status of the adjuster
     function setInsuranceAdjuster(
         address adjuster_,
         bool status_
@@ -71,10 +83,14 @@ contract AdjusterOperations is AccessControlEnumerable {
         emit AdjusterOperations_AdjustersUpdated(adjuster_, status_);
     }
 
+    /// @dev helper method to check if an address is an adjuster
+    /// @param adjuster_ address of the adjuster
     function isAdjuster(address adjuster_) external view returns (bool) {
         return adjusters[adjuster_].status;
     }
 
+    /// @dev helper method to check if this contract is properly initialized
+    /// @return bool true if the contract is initialized
     function isInitialized() external view returns (bool) {
         return
             getRoleMemberCount(APPROVER_ADMIN) >= REQUIRED_APPROVERS &&
