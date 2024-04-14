@@ -498,6 +498,100 @@ contract InsuranceManagerTest is Test, CustomTest {
         vm.startPrank(_applicant0);
         sampleERC20.mint(_applicant0, _amount);
         sampleERC20.approve(address(insuranceManager), _amount);
+        vm.expectEmit(true, false, false, false);
+        emit InsuranceManager.PolicyActivated(_applicationId);
+        insuranceManager.activatePolicy(_applicationId, _amount);
+        vm.stopPrank();
+
+        (, , , , , , , bool _isPaid, ) = insuranceManager.applications(
+            _applicationId
+        );
+        assertTrue(_isPaid);
+    }
+
+    function test_activatePolicy_fail_invalidApplicationStatus(
+        uint256 riskFactor_,
+        uint256 numSeconds_
+    ) external {
+        riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
+        numSeconds_ = bound(
+            numSeconds_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION()
+        );
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 100;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Rejected;
+        vm.startPrank(adjusterAdmins[0]);
+        insuranceManager.reviewApplication(
+            _applicationId,
+            riskFactor_,
+            _status0
+        );
+        vm.stopPrank();
+
+        (, , , , , uint256 _premium1, , , ) = insuranceManager.applications(
+            _applicationId
+        );
+
+        uint256 _amount = (numSeconds_ * _premium1);
+        vm.startPrank(_applicant0);
+        vm.expectRevert(
+            InsuranceManager.InsuranceManager_InvalidApplicationStatus.selector
+        );
+        insuranceManager.activatePolicy(_applicationId, _amount);
+        vm.stopPrank();
+    }
+
+    function test_activatePolicy_fail_invalidApplicationStatusTimeWindow(
+        uint256 riskFactor_,
+        uint256 numSeconds_
+    ) external {
+        riskFactor_ = bound(riskFactor_, 1, insuranceManager.MAX_RISK_FACTOR());
+        numSeconds_ = bound(
+            numSeconds_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION()
+        );
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 100;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Approved;
+        vm.startPrank(adjusterAdmins[0]);
+        insuranceManager.reviewApplication(
+            _applicationId,
+            riskFactor_,
+            _status0
+        );
+        vm.stopPrank();
+
+        (, , , , , uint256 _premium1, , , ) = insuranceManager.applications(
+            _applicationId
+        );
+
+        skip(insuranceManager.MAX_TIME_WINDOW() + 1);
+        uint256 _amount = (numSeconds_ * _premium1);
+        vm.startPrank(_applicant0);
+        vm.expectRevert(
+            InsuranceManager.InsuranceManager_InvalidApplicationStatus.selector
+        );
         insuranceManager.activatePolicy(_applicationId, _amount);
         vm.stopPrank();
     }

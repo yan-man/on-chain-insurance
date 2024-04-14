@@ -50,6 +50,7 @@ contract InsuranceManager is AccessControlEnumerable {
         uint256 indexed applicationId,
         ApplicationStatus status
     );
+    event PolicyActivated(uint256 indexed applicationId);
 
     error InsuranceManager_InvalidValue(uint256 value);
     error InsuranceManager_InvalidCarDetails(bytes32 carDetails);
@@ -153,9 +154,7 @@ contract InsuranceManager is AccessControlEnumerable {
         if (_application.status != ApplicationStatus.Approved) {
             revert InsuranceManager_InvalidApplicationStatus();
         }
-        if (
-            block.timestamp > _application.submissionTimestamp + MAX_TIME_WINDOW
-        ) {
+        if (block.timestamp > _application.reviewTimestamp + MAX_TIME_WINDOW) {
             revert InsuranceManager_InvalidApplicationStatus();
         }
 
@@ -171,6 +170,8 @@ contract InsuranceManager is AccessControlEnumerable {
         );
         _application.isPaid = true;
         applications[applicationId_] = _application;
+
+        emit PolicyActivated(applicationId_);
     }
 
     // function claimPolicy (uint256 tokenId_) external {
