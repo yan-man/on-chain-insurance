@@ -28,6 +28,15 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         insuranceCoverageNFT = deployInsuranceCoverageNFT.run();
     }
 
+    function test_deploymentParams_success() external view {
+        assertTrue(
+            insuranceCoverageNFT.hasRole(
+                insuranceCoverageNFT.MANAGER_CONTRACT(),
+                args.managerContract
+            )
+        );
+    }
+
     function test_supportsInterface_success() public view {
         // ERC-721 interface ID
         bytes4 _erc721InterfaceID = type(IERC721).interfaceId;
