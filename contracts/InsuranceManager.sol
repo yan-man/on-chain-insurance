@@ -17,7 +17,7 @@ contract InsuranceManager {
     struct Application {
         address applicant;
         uint256 tokenId;
-        uint256 value; // in paymentToken including decimals
+        uint256 value; // in paymentToken with decimals
         uint256 riskFactor; // 1-100
         uint256 submissionTimestamp;
         uint256 reviewTimestamp;
@@ -27,8 +27,8 @@ contract InsuranceManager {
         ApplicationStatus status;
     }
 
-    uint256 public constant MIN_VALUE = 1e2; // without token decimals, ie $1K
-    uint256 public constant MAX_VALUE = 1e6; // without token decimals, ie $1M
+    uint256 public constant MIN_VALUE = 1e20; // assume 18 token decimals, ie $1K
+    uint256 public constant MAX_VALUE = 1e24; // assume 18 token decimals, ie $1M
     uint256 public constant MAX_RISK_FACTOR = 100;
     uint256 public constant MAX_TIME_WINDOW = 7 days; // window for premium payment
 
@@ -50,6 +50,7 @@ contract InsuranceManager {
         ApplicationStatus status
     );
     event PolicyActivated(uint256 indexed applicationId);
+    event PolicyClaimed(uint256 indexed applicationId);
 
     error InsuranceManager_InvalidValue(uint256 value);
     error InsuranceManager_InvalidCarDetails(bytes32 carDetails);
@@ -58,6 +59,7 @@ contract InsuranceManager {
     error InsuranceManager_NotInitialized();
     error InsuranceManager_InvalidApplication(address applicant);
     error InsuranceManager_InvalidClaimant(address claimant);
+    error InsuranceManager_InsufficientFunds();
 
     modifier requireAdjusterOperationsInitialized() {
         if (!adjusterOperations.isInitialized()) {
@@ -114,7 +116,7 @@ contract InsuranceManager {
         applications[_applicationId] = Application({
             applicant: msg.sender,
             tokenId: 0,
-            value: value_,
+            value: value_ * (10 ** ERC20(address(paymentToken)).decimals()),
             riskFactor: 0, // Initial risk factor set to 0
             premium: 0, // Initial premium set to 0
             submissionTimestamp: block.timestamp,
@@ -145,9 +147,10 @@ contract InsuranceManager {
             revert InsuranceManager_InvalidApplicationStatus();
         }
         if (status_ == ApplicationStatus.Approved) {
-            _application.premium =
-                calculatePremium(_application.value, riskFactor_) *
-                (10 ** ERC20(address(paymentToken)).decimals());
+            _application.premium = calculatePremium(
+                _application.value,
+                riskFactor_
+            );
             _application.riskFactor = riskFactor_;
         } else if (status_ == ApplicationStatus.Rejected) {
             _uniqueApplicationHashes[_application.carDetails] = false; // reset the hash as it is no longer in use
@@ -171,7 +174,7 @@ contract InsuranceManager {
 
         paymentToken.transferFrom(
             _application.applicant,
-            address(this),
+            address(yieldManager),
             amount_
         );
         uint256 _tokenId = insuranceCoverageNFT.mint(
@@ -202,17 +205,24 @@ contract InsuranceManager {
         if (_application.status != ApplicationStatus.Approved) {
             revert InsuranceManager_InvalidApplicationStatus();
         }
+
         _application.status = ApplicationStatus.Claimed;
         applications[applicationId_] = _application;
 
-        emit PolicyActivated(applicationId_);
+        if (yieldManager.getAvailableBalance() >= _application.value) {
+            yieldManager.withdraw(_application.premium, msg.sender);
+        } else {
+            revert InsuranceManager_InsufficientFunds();
+        }
+
+        emit PolicyClaimed(applicationId_);
     }
 
     /**
      * @dev Calculates insurance premium based on the insured value and risk factor.
      * @param value_ The insured value.
      * @param riskFactor_ The risk factor, ranging from 1 to 100.
-     * @return premium The calculated premium in paymentToken, not incorporating decimals. Still need to multiply by 10 ** decimals.
+     * @return premium The calculated premium in paymentToken, with decimals.
      */
     function calculatePremium(
         uint256 value_,

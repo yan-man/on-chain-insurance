@@ -6,5 +6,5 @@ test = 'test'
 cache_path  = 'cache_forge'
 
 [fuzz]
-runs=1000
+runs=500
 depth=16

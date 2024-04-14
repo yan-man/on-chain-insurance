@@ -17,6 +17,7 @@ import {InsuranceCoverageNFT} from "../../contracts/InsuranceCoverageNFT.sol";
 import {InsuranceManager} from "../../contracts/InsuranceManager.sol";
 import {MockPool} from "../../contracts/mocks/MockPool.sol";
 import {SampleERC20} from "../../contracts/mocks/SampleERC20.sol";
+import {YieldManager} from "../../contracts/YieldManager.sol";
 
 contract InsuranceManagerTest is Test, CustomTest {
     struct CarDetails {
@@ -31,6 +32,7 @@ contract InsuranceManagerTest is Test, CustomTest {
     InsuranceCoverageNFT public insuranceCoverageNFT;
     AdjusterOperations public adjusterOperations;
     InsuranceManager public insuranceManager;
+    YieldManager public yieldManager;
     MockPool public mockPool;
     SampleERC20 public mockToken;
     SampleERC20 public mockAToken;
@@ -72,6 +74,7 @@ contract InsuranceManagerTest is Test, CustomTest {
 
         insuranceManager = deployInsuranceManager.run();
         insuranceCoverageNFT = insuranceManager.insuranceCoverageNFT();
+        yieldManager = insuranceManager.yieldManager();
         _setUpAdjusterOperations();
     }
 
@@ -313,8 +316,7 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         assertEq(
             _premium1,
-            insuranceManager.calculatePremium(_value0, riskFactor_) *
-                (10 ** mockToken.decimals()),
+            insuranceManager.calculatePremium(_value0, riskFactor_),
             "premium mismatch"
         );
         assertEq(_isPaid1, false, "isPaid mismatch");
@@ -696,7 +698,74 @@ contract InsuranceManagerTest is Test, CustomTest {
         vm.stopPrank();
     }
 
+    function _depositForYield(uint256 amount_) internal {
+        vm.startPrank(yieldManager.managerContract());
+        mockToken.mint(address(yieldManager), amount_);
+        yieldManager.deposit(amount_);
+        vm.stopPrank();
+    }
+
     function test_claimPolicy_success() external {
+        uint256 _riskFactor = 10;
+        uint256 _numSeconds = 1000;
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 10000;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Approved;
+        vm.startPrank(adjusterAdmins[0]);
+        insuranceManager.reviewApplication(
+            _applicationId,
+            _riskFactor,
+            _status0
+        );
+        vm.stopPrank();
+
+        (, , uint256 _value1, , , , uint256 _premium1, , , ) = insuranceManager
+            .applications(_applicationId);
+
+        _depositForYield(_value1);
+
+        uint256 _amount = (_numSeconds * _premium1);
+        vm.startPrank(_applicant0);
+        mockToken.mint(_applicant0, _amount);
+        mockToken.approve(address(insuranceManager), _amount);
+
+        insuranceManager.activatePolicy(_applicationId, _amount);
+        vm.expectEmit(true, false, false, false);
+        emit InsuranceManager.PolicyClaimed(_applicationId);
+        insuranceManager.claimPolicy(_applicationId);
+        vm.stopPrank();
+
+        assertEq(
+            mockToken.balanceOf(_applicant0),
+            0,
+            "applicant balance mismatch"
+        );
+
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            InsuranceManager.ApplicationStatus _status
+        ) = insuranceManager.applications(_applicationId);
+        assertTrue(_status == InsuranceManager.ApplicationStatus.Claimed);
+    }
+
+    function test_claimPolicy_fail_insufficientFunds() external {
         uint256 _riskFactor = 10;
         uint256 _numSeconds = 1000;
         address _applicant0 = vm.addr(getCounterAndIncrement());
@@ -729,24 +798,11 @@ contract InsuranceManagerTest is Test, CustomTest {
         mockToken.approve(address(insuranceManager), _amount);
 
         insuranceManager.activatePolicy(_applicationId, _amount);
-        vm.expectEmit(true, false, false, false);
-        emit InsuranceManager.PolicyActivated(_applicationId);
+        vm.expectRevert(
+            InsuranceManager.InsuranceManager_InsufficientFunds.selector
+        );
         insuranceManager.claimPolicy(_applicationId);
         vm.stopPrank();
-
-        (
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            InsuranceManager.ApplicationStatus _status
-        ) = insuranceManager.applications(_applicationId);
-        assertTrue(_status == InsuranceManager.ApplicationStatus.Claimed);
     }
 
     function test_claimPolicy_fail_invalidClaimant() external {
@@ -829,6 +885,8 @@ contract InsuranceManagerTest is Test, CustomTest {
         mockToken.approve(address(insuranceManager), _amount);
 
         insuranceManager.activatePolicy(_applicationId, _amount);
+
+        _depositForYield(_value0);
 
         vm.stopPrank();
         vm.startPrank(_applicant0);
