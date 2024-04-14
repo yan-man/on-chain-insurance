@@ -13,19 +13,28 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         bool isActive;
     }
 
-    mapping(uint256 => PolicyDetails) public policyDetails; // tokenId => policy details
     bytes32 public constant MANAGER_CONTRACT = keccak256("MANAGER_CONTRACT");
+    uint256 public constant MAX_COVERAGE_DURATION = 365 days;
+
+    mapping(uint256 => PolicyDetails) public policyDetails; // tokenId => policy details
     uint256 public tokenId;
 
     event PolicyCreated(
         uint256 indexed tokenId,
         address indexed to,
-        uint256 indexed premium,
+        uint256 premium,
         uint256 startTime,
         uint256 endTime,
         bool isActive
     );
     event PolicyInactive(uint256 indexed tokenId);
+    event PolicyExtended(
+        uint256 indexed tokenId,
+        uint256 indexed premium,
+        uint256 startTime,
+        uint256 endTime,
+        bool isActive
+    );
 
     error InsuranceCoverageNFT_NotOwner();
     error InsuranceCoverageNFT_InvalidPremium();
@@ -59,7 +68,9 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         if (premium_ == 0) {
             revert InsuranceCoverageNFT_InvalidPremium();
         }
-        if (coverageDuration_ == 0 || coverageDuration_ > 365 days) {
+        if (
+            coverageDuration_ == 0 || coverageDuration_ > MAX_COVERAGE_DURATION
+        ) {
             revert InsuranceCoverageNFT_InvalidCoverageDuration(
                 coverageDuration_
             );
@@ -99,24 +110,38 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         emit PolicyInactive(tokenId_);
     }
 
-    // function extendCoverage(
-    //     uint256 tokenId_,
-    //     uint256 coverageDuration_
-    // ) external onlyTokenOwner(tokenId_) {
-    //     PolicyDetails memory _policy = policyDetails[tokenId_];
-    //     if (!_policy.isActive || _policy.endTime < block.timestamp) {
-    //         revert InsuranceCoverageNFT_InactivePolicy();
-    //     }
+    function extendCoverage(
+        uint256 tokenId_,
+        uint256 coverageDuration_
+    ) external onlyRole(MANAGER_CONTRACT) {
+        PolicyDetails memory _policy = policyDetails[tokenId_];
 
-    //     if (
-    //         coverageDuration_ == 0 ||
-    //         coverageDuration_ > (_policy.endTime - block.timestamp)
-    //     ) {
-    //         revert InsuranceCoverageNFT_InvalidCoverageDuration(
-    //             coverageDuration_
-    //         );
-    //     }
-    // }
+        // check if policy is active and not expired
+        if (!_policy.isActive || _policy.endTime < block.timestamp) {
+            revert InsuranceCoverageNFT_InactivePolicy();
+        }
+
+        uint256 _remainingDuration = _policy.endTime - block.timestamp;
+        // ensure the total duration never exceeds the MAX_COVERAGE_DURATION
+        if (
+            coverageDuration_ == 0 ||
+            coverageDuration_ + _remainingDuration > MAX_COVERAGE_DURATION
+        ) {
+            revert InsuranceCoverageNFT_InvalidCoverageDuration(
+                coverageDuration_
+            );
+        }
+        _policy.endTime += coverageDuration_;
+        policyDetails[tokenId_] = _policy;
+
+        emit PolicyExtended(
+            _policy.id,
+            _policy.premium,
+            _policy.startTime,
+            _policy.endTime,
+            _policy.isActive
+        );
+    }
 
     function supportsInterface(
         bytes4 interfaceId

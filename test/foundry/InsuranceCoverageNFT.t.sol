@@ -71,7 +71,7 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         bool _expectedIsActive = true;
         vm.expectEmit(true, true, true, false);
         emit IERC721.Transfer(address(0), to_, _expectedId);
-        vm.expectEmit(true, true, true, true);
+        vm.expectEmit(true, true, false, true);
         emit InsuranceCoverageNFT.PolicyCreated(
             _expectedId,
             to_,
@@ -234,5 +234,57 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         );
         insuranceCoverageNFT.burn(_tokenId);
         vm.stopPrank();
+    }
+
+    function test_extendCoverage_success(
+        address to_,
+        uint256 premium_,
+        uint256 coverageExtension_
+    ) public {
+        /// @dev to_ also cannot be a contract address unless it implements onERC721Received
+        vm.assume(to_ != address(0) && to_.code.length == 0);
+        vm.assume(premium_ > 0);
+        vm.assume(
+            coverageExtension_ > 0 &&
+                coverageExtension_ <
+                insuranceCoverageNFT.MAX_COVERAGE_DURATION() - 1
+        );
+
+        uint256 _coverageDuration = insuranceCoverageNFT
+            .MAX_COVERAGE_DURATION() - coverageExtension_;
+
+        vm.startPrank(args.managerContract);
+        insuranceCoverageNFT.mint(to_, premium_, _coverageDuration);
+        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
+        (
+            ,
+            uint256 _premium0,
+            uint256 _startDate0,
+            uint256 _endDate0,
+            bool _isActive0
+        ) = insuranceCoverageNFT.policyDetails(_tokenId);
+
+        vm.expectEmit(true, true, false, true);
+        emit InsuranceCoverageNFT.PolicyExtended(
+            _tokenId,
+            _premium0,
+            _startDate0,
+            _endDate0 + coverageExtension_,
+            _isActive0
+        );
+        insuranceCoverageNFT.extendCoverage(_tokenId, coverageExtension_);
+        vm.stopPrank();
+        (
+            ,
+            uint256 _premium1,
+            uint256 _startDate1,
+            uint256 _endDate1,
+            bool _isActive1
+        ) = insuranceCoverageNFT.policyDetails(_tokenId);
+
+        assertEq(_premium1, _premium0);
+        assertEq(_startDate1, _startDate0);
+        assertEq(_endDate1, _endDate0 + coverageExtension_);
+        assertTrue(_isActive1);
     }
 }
