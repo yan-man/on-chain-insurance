@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
     struct PolicyDetails {
         uint256 id;
-        uint256 premium; // in token decimals/sec
+        uint256 premium; // in paymentToken, in $0.01/sec (ie 10 ** (decimals - 2))
         uint256 startTime; // timestamp
         uint256 endTime; // timestamp
         bool isActive;
@@ -58,7 +58,8 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         address to_,
         uint256 premium_,
         uint256 coverageDuration_
-    ) external onlyRole(MANAGER_CONTRACT) {
+    ) external onlyRole(MANAGER_CONTRACT) returns (uint256) {
+        tokenId++;
         if (premium_ == 0) {
             revert InsuranceCoverageNFT_InvalidPremium();
         }
@@ -92,7 +93,7 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
             _endTime,
             _isActive
         );
-        tokenId++;
+        return _tokenId;
     }
 
     function burn(uint256 tokenId_) external onlyTokenOwner(tokenId_) {

@@ -163,24 +163,20 @@ contract AdjusterOperationsTest is Test, CustomTest {
                 adjuster_ != approver_
         );
         vm.assume(approver_ != address(0) && approver_ != args.masterAdmin);
-        string memory _id = "id";
         bool _status = true;
         _addApprover(approver_);
         vm.startPrank(approver_);
         vm.expectEmit(true, true, false, false);
         emit AdjusterOperations.AdjusterOperations_AdjustersUpdated(
             adjuster_,
-            _status,
-            _id
+            _status
         );
-        adjusterOperations.setInsuranceAdjuster(adjuster_, _id, _status);
+        adjusterOperations.setInsuranceAdjuster(adjuster_, _status);
         vm.stopPrank();
         assertEq(adjusterOperations.isAdjuster(adjuster_), _status);
         assertEq(adjusterOperations.adjusterCount(), 1);
-        (address _adjuster, string memory _savedId, ) = adjusterOperations
-            .adjusters(adjuster_);
+        (address _adjuster, ) = adjusterOperations.adjusters(adjuster_);
         assertEq(_adjuster, adjuster_);
-        assertEq(_savedId, _id);
         assertFalse(adjusterOperations.isInitialized());
     }
 
@@ -197,54 +193,17 @@ contract AdjusterOperationsTest is Test, CustomTest {
         vm.assume(approver_ != address(0) && approver_ != args.masterAdmin);
 
         // initialize adjuster
-        string memory _id = "id";
         _addApprover(approver_);
         vm.startPrank(approver_);
-        adjusterOperations.setInsuranceAdjuster(adjuster_, _id, status_);
+        adjusterOperations.setInsuranceAdjuster(adjuster_, status_);
         bool _newStatus = !status_;
-        adjusterOperations.setInsuranceAdjuster(adjuster_, _id, _newStatus);
+        adjusterOperations.setInsuranceAdjuster(adjuster_, _newStatus);
         vm.stopPrank();
 
         assertEq(adjusterOperations.isAdjuster(adjuster_), _newStatus);
         assertEq(adjusterOperations.adjusterCount(), _newStatus ? 1 : 0);
-        (address _adjuster, string memory _savedId, ) = adjusterOperations
-            .adjusters(adjuster_);
+        (address _adjuster, ) = adjusterOperations.adjusters(adjuster_);
         assertEq(_adjuster, adjuster_);
-        assertEq(_savedId, _id);
-        assertFalse(adjusterOperations.isInitialized());
-    }
-
-    function test_setInsuranceAdjuster_success_editIdOnly(
-        address adjuster_,
-        bool status_,
-        string calldata newId_
-    ) external {
-        address _approver = vm.addr(getCounterAndIncrement());
-        vm.assume(
-            adjuster_ != address(0) &&
-                adjuster_ != args.masterAdmin &&
-                adjuster_ != _approver
-        );
-
-        // initialize adjuster
-        string memory _id = "id";
-        _addApprover(_approver);
-        vm.startPrank(_approver);
-        adjusterOperations.setInsuranceAdjuster(adjuster_, _id, status_);
-        uint256 _initialAdjusterCount = adjusterOperations.adjusterCount();
-        assertEq(_initialAdjusterCount, status_ ? 1 : 0);
-
-        adjusterOperations.setInsuranceAdjuster(adjuster_, newId_, status_);
-        vm.stopPrank();
-
-        uint256 _finalAdjusterCount = adjusterOperations.adjusterCount();
-
-        assertEq(adjusterOperations.isAdjuster(adjuster_), status_);
-        assertEq(_initialAdjusterCount, _finalAdjusterCount); // status didn't change, so adjuster count should remain the same
-        (address _adjuster, string memory _savedId, ) = adjusterOperations
-            .adjusters(adjuster_);
-        assertEq(_adjuster, adjuster_);
-        assertEq(_savedId, newId_);
         assertFalse(adjusterOperations.isInitialized());
     }
 
@@ -258,7 +217,7 @@ contract AdjusterOperationsTest is Test, CustomTest {
                 adjuster_ != args.masterAdmin &&
                 adjuster_ != nonApproverAdmin_
         );
-        string memory _id = "id";
+
         vm.startPrank(nonApproverAdmin_);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -267,7 +226,7 @@ contract AdjusterOperationsTest is Test, CustomTest {
                 adjusterOperations.APPROVER_ADMIN()
             )
         );
-        adjusterOperations.setInsuranceAdjuster(adjuster_, _id, status_);
+        adjusterOperations.setInsuranceAdjuster(adjuster_, status_);
         vm.stopPrank();
         assertEq(adjusterOperations.isAdjuster(adjuster_), false);
         assertFalse(adjusterOperations.isInitialized());
@@ -282,12 +241,12 @@ contract AdjusterOperationsTest is Test, CustomTest {
         );
         address _adjuster = address(0);
         _addApprover(approverAdmin_);
-        string memory _id = "id";
+
         vm.startPrank(approverAdmin_);
         vm.expectRevert(
             AdjusterOperations.AdjusterOperations_InvalidZeroAddress.selector
         );
-        adjusterOperations.setInsuranceAdjuster(_adjuster, _id, status_);
+        adjusterOperations.setInsuranceAdjuster(_adjuster, status_);
         vm.stopPrank();
         assertEq(adjusterOperations.isAdjuster(_adjuster), false);
         assertFalse(adjusterOperations.isInitialized());
@@ -302,12 +261,11 @@ contract AdjusterOperationsTest is Test, CustomTest {
         );
         address _adjuster = approverAdmin_;
         _addApprover(approverAdmin_);
-        string memory _id = "id";
         vm.startPrank(approverAdmin_);
         vm.expectRevert(
             AdjusterOperations.AdjusterOperations_InvalidAdjuster.selector
         );
-        adjusterOperations.setInsuranceAdjuster(_adjuster, _id, status_);
+        adjusterOperations.setInsuranceAdjuster(_adjuster, status_);
         vm.stopPrank();
         assertEq(adjusterOperations.isAdjuster(_adjuster), false);
         assertFalse(adjusterOperations.isInitialized());
@@ -323,12 +281,11 @@ contract AdjusterOperationsTest is Test, CustomTest {
         address _adjuster = args.masterAdmin;
 
         _addApprover(approverAdmin_);
-        string memory _id = "id";
         vm.startPrank(approverAdmin_);
         vm.expectRevert(
             AdjusterOperations.AdjusterOperations_InvalidAdjuster.selector
         );
-        adjusterOperations.setInsuranceAdjuster(_adjuster, _id, status_);
+        adjusterOperations.setInsuranceAdjuster(_adjuster, status_);
         vm.stopPrank();
         assertEq(adjusterOperations.isAdjuster(_adjuster), false);
         assertFalse(adjusterOperations.isInitialized());
@@ -353,7 +310,7 @@ contract AdjusterOperationsTest is Test, CustomTest {
         vm.startPrank(_approver);
         for (uint256 i = _expectedAdjusterCount; i > 0; --i) {
             _adjuster = vm.addr(getCounterAndIncrement());
-            adjusterOperations.setInsuranceAdjuster(_adjuster, "id", _status);
+            adjusterOperations.setInsuranceAdjuster(_adjuster, _status);
             assertEq(adjusterOperations.isAdjuster(_adjuster), _status);
         }
 

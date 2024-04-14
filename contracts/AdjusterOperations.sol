@@ -6,7 +6,6 @@ import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions
 contract AdjusterOperations is AccessControlEnumerable {
     struct Adjuster {
         address adjuster;
-        string id;
         bool status;
     }
 
@@ -20,8 +19,7 @@ contract AdjusterOperations is AccessControlEnumerable {
 
     event AdjusterOperations_AdjustersUpdated(
         address indexed adjuster,
-        bool indexed status,
-        string id
+        bool indexed status
     );
 
     error AdjusterOperations_InvalidZeroAddress();
@@ -49,7 +47,6 @@ contract AdjusterOperations is AccessControlEnumerable {
 
     function setInsuranceAdjuster(
         address adjuster_,
-        string memory id_,
         bool status_
     ) external onlyRole(APPROVER_ADMIN) {
         if (adjuster_ == address(0)) {
@@ -61,11 +58,7 @@ contract AdjusterOperations is AccessControlEnumerable {
         }
 
         Adjuster memory _currentAdjuster = adjusters[adjuster_];
-        adjusters[adjuster_] = Adjuster({
-            adjuster: adjuster_,
-            id: id_,
-            status: status_
-        });
+        adjusters[adjuster_] = Adjuster({adjuster: adjuster_, status: status_});
 
         // adjust adjuster count only if status is changed, not id
         if (!_currentAdjuster.status && status_) {
@@ -75,7 +68,7 @@ contract AdjusterOperations is AccessControlEnumerable {
             // from true -> false
             adjusterCount--;
         }
-        emit AdjusterOperations_AdjustersUpdated(adjuster_, status_, id_);
+        emit AdjusterOperations_AdjustersUpdated(adjuster_, status_);
     }
 
     function isAdjuster(address adjuster_) external view returns (bool) {

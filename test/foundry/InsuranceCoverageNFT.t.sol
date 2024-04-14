@@ -28,6 +28,15 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         insuranceCoverageNFT = deployInsuranceCoverageNFT.run();
     }
 
+    function test_deploymentParams_success() external view {
+        assertTrue(
+            insuranceCoverageNFT.hasRole(
+                insuranceCoverageNFT.MANAGER_CONTRACT(),
+                args.managerContract
+            )
+        );
+    }
+
     function test_supportsInterface_success() public view {
         // ERC-721 interface ID
         bytes4 _erc721InterfaceID = type(IERC721).interfaceId;
@@ -64,10 +73,10 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         /// @dev to_ also cannot be a contract address unless it implements onERC721Received
         vm.assume(to_ != address(0) && to_.code.length == 0);
         vm.assume(premium_ > 0);
-        vm.assume(
-            coverageDuration_ > 0 &&
-                coverageDuration_ <=
-                insuranceCoverageNFT.MAX_COVERAGE_DURATION()
+        coverageDuration_ = bound(
+            coverageDuration_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
 
         vm.startPrank(args.managerContract);
@@ -84,10 +93,12 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
             block.timestamp + coverageDuration_,
             _expectedIsActive
         );
-        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            coverageDuration_
+        );
         vm.stopPrank();
-
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (
             uint256 _id,
             uint256 _premium,
@@ -115,10 +126,10 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         vm.assume(nonManager_ != args.managerContract);
         vm.assume(to_ != address(0) && to_.code.length == 0);
         vm.assume(premium_ > 0);
-        vm.assume(
-            coverageDuration_ > 0 &&
-                coverageDuration_ <=
-                insuranceCoverageNFT.MAX_COVERAGE_DURATION()
+        coverageDuration_ = bound(
+            coverageDuration_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
 
         vm.startPrank(nonManager_);
@@ -139,10 +150,10 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         uint256 coverageDuration_
     ) public {
         vm.assume(to_ != address(0) && to_.code.length == 0);
-        vm.assume(
-            coverageDuration_ > 0 &&
-                coverageDuration_ <=
-                insuranceCoverageNFT.MAX_COVERAGE_DURATION()
+        coverageDuration_ = bound(
+            coverageDuration_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
 
         uint256 _premium = 0;
@@ -189,17 +200,20 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         /// @dev to_ also cannot be a contract address unless it implements onERC721Received
         vm.assume(to_ != address(0) && to_.code.length == 0);
         vm.assume(premium_ > 0);
-        vm.assume(
-            coverageDuration_ > 0 &&
-                coverageDuration_ <=
-                insuranceCoverageNFT.MAX_COVERAGE_DURATION()
+        coverageDuration_ = bound(
+            coverageDuration_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            coverageDuration_
+        );
         vm.stopPrank();
 
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (, uint256 _premium0, uint256 _startTime0, , ) = insuranceCoverageNFT
             .policyDetails(_tokenId);
 
@@ -239,17 +253,19 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
             to_ != address(0) && to_.code.length == 0 && to_ != nonOwner_
         );
         vm.assume(premium_ > 0);
-        vm.assume(
-            coverageDuration_ > 0 &&
-                coverageDuration_ <=
-                insuranceCoverageNFT.MAX_COVERAGE_DURATION()
+        coverageDuration_ = bound(
+            coverageDuration_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            coverageDuration_
+        );
         vm.stopPrank();
-
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
 
         vm.startPrank(nonOwner_);
         vm.expectRevert(
@@ -267,18 +283,21 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         /// @dev to_ also cannot be a contract address unless it implements onERC721Received
         vm.assume(to_ != address(0) && to_.code.length == 0);
         vm.assume(premium_ > 0);
-        vm.assume(
-            coverageExtension_ > 0 &&
-                coverageExtension_ <
-                insuranceCoverageNFT.MAX_COVERAGE_DURATION() - 1
+        coverageExtension_ = bound(
+            coverageExtension_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION() - 1
         );
 
         uint256 _coverageDuration = insuranceCoverageNFT
             .MAX_COVERAGE_DURATION() - coverageExtension_;
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, _coverageDuration);
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            _coverageDuration
+        );
         (
             ,
             uint256 _premium0,
@@ -321,20 +340,23 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         /// @dev to_ also cannot be a contract address unless it implements onERC721Received
         vm.assume(to_ != address(0) && to_.code.length == 0);
         vm.assume(premium_ > 0);
-        vm.assume(
-            coverageExtension_ > 0 &&
-                coverageExtension_ <
-                insuranceCoverageNFT.MAX_COVERAGE_DURATION() - 1
+        coverageExtension_ = bound(
+            coverageExtension_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION() - 1
         );
 
         uint256 _coverageDuration = insuranceCoverageNFT
             .MAX_COVERAGE_DURATION() - coverageExtension_;
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, _coverageDuration);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            _coverageDuration
+        );
         vm.stopPrank();
 
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (
             ,
             uint256 _premium0,
@@ -377,20 +399,23 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         /// @dev to_ also cannot be a contract address unless it implements onERC721Received
         vm.assume(to_ != address(0) && to_.code.length == 0);
         vm.assume(premium_ > 0);
-        vm.assume(
-            coverageExtension_ > 0 &&
-                coverageExtension_ <
-                insuranceCoverageNFT.MAX_COVERAGE_DURATION() - 1
+        coverageExtension_ = bound(
+            coverageExtension_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION() - 1
         );
 
         uint256 _coverageDuration = insuranceCoverageNFT
             .MAX_COVERAGE_DURATION() - coverageExtension_;
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, _coverageDuration);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            _coverageDuration
+        );
         vm.stopPrank();
 
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (, uint256 _premium0, uint256 _startTime0, , ) = insuranceCoverageNFT
             .policyDetails(_tokenId);
 
@@ -429,23 +454,26 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         /// @dev to_ also cannot be a contract address unless it implements onERC721Received
         vm.assume(to_ != address(0) && to_.code.length == 0);
         vm.assume(premium_ > 0);
-        vm.assume(
-            coverageExtension_ > 0 &&
-                coverageExtension_ <
-                insuranceCoverageNFT.MAX_COVERAGE_DURATION() - 1
+        coverageExtension_ = bound(
+            coverageExtension_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION() - 1
         );
 
         uint256 _coverageDuration = insuranceCoverageNFT
             .MAX_COVERAGE_DURATION() - coverageExtension_;
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, _coverageDuration);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            _coverageDuration
+        );
         vm.stopPrank();
 
         // after coverage duration, so that policy is expired
         skip(_coverageDuration + 1);
 
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (
             ,
             uint256 _premium0,
@@ -482,19 +510,22 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         /// @dev to_ also cannot be a contract address unless it implements onERC721Received
         vm.assume(to_ != address(0) && to_.code.length == 0);
         vm.assume(premium_ > 0);
-        vm.assume(
-            coverageDuration_ > 0 &&
-                coverageDuration_ <=
-                insuranceCoverageNFT.MAX_COVERAGE_DURATION()
+        coverageDuration_ = bound(
+            coverageDuration_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
 
         uint _coverageExtension = 0;
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            coverageDuration_
+        );
         vm.stopPrank();
 
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (
             ,
             uint256 _premium0,
@@ -536,20 +567,23 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         /// @dev to_ also cannot be a contract address unless it implements onERC721Received
         vm.assume(to_ != address(0) && to_.code.length == 0);
         vm.assume(premium_ > 0);
-        vm.assume(
-            coverageDuration_ > 0 &&
-                coverageDuration_ <=
-                insuranceCoverageNFT.MAX_COVERAGE_DURATION()
+        coverageDuration_ = bound(
+            coverageDuration_,
+            1,
+            insuranceCoverageNFT.MAX_COVERAGE_DURATION()
         );
 
         uint256 coverageExtension_ = insuranceCoverageNFT
             .MAX_COVERAGE_DURATION() + coverageDuration_;
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            coverageDuration_
+        );
         vm.stopPrank();
 
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (
             ,
             uint256 _premium0,
