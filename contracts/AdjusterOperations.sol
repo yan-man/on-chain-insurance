@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 
-contract InsuranceRegistry is AccessControlEnumerable {
+contract AdjusterOperations is AccessControlEnumerable {
     struct Adjuster {
         address adjuster;
         string id;
@@ -18,15 +18,15 @@ contract InsuranceRegistry is AccessControlEnumerable {
     mapping(address => Adjuster) public adjusters; // mapping of insurance adjusters
     uint256 public adjusterCount;
 
-    event InsuranceRegistry_AdjustersUpdated(
+    event AdjusterOperations_AdjustersUpdated(
         address indexed adjuster,
         bool indexed status,
         string id
     );
 
-    error InsuranceRegistry_InvalidZeroAddress();
-    error InsuranceRegistry_InvalidApprover();
-    error InsuranceRegistry_InvalidAdjuster();
+    error AdjusterOperations_InvalidZeroAddress();
+    error AdjusterOperations_InvalidApprover();
+    error AdjusterOperations_InvalidAdjuster();
 
     constructor(address masterAdmin_) {
         _grantRole(MASTER_ADMIN, masterAdmin_);
@@ -34,11 +34,11 @@ contract InsuranceRegistry is AccessControlEnumerable {
 
     function addApprover(address approver_) external onlyRole(MASTER_ADMIN) {
         if (approver_ == address(0)) {
-            revert InsuranceRegistry_InvalidZeroAddress();
+            revert AdjusterOperations_InvalidZeroAddress();
         }
         /// @dev Master admin shouldn't approve themselves as approver. Too much control
         if (hasRole(MASTER_ADMIN, approver_)) {
-            revert InsuranceRegistry_InvalidApprover();
+            revert AdjusterOperations_InvalidApprover();
         }
         _grantRole(APPROVER_ADMIN, approver_);
     }
@@ -53,11 +53,11 @@ contract InsuranceRegistry is AccessControlEnumerable {
         bool status_
     ) external onlyRole(APPROVER_ADMIN) {
         if (adjuster_ == address(0)) {
-            revert InsuranceRegistry_InvalidZeroAddress();
+            revert AdjusterOperations_InvalidZeroAddress();
         }
         /// @dev Approver shouldn't approve themselves as adjuster; adjuster also shouldn't be MASTER_ADMIN
         if (adjuster_ == msg.sender || hasRole(MASTER_ADMIN, adjuster_)) {
-            revert InsuranceRegistry_InvalidAdjuster();
+            revert AdjusterOperations_InvalidAdjuster();
         }
 
         Adjuster memory _currentAdjuster = adjusters[adjuster_];
@@ -75,7 +75,7 @@ contract InsuranceRegistry is AccessControlEnumerable {
             // from true -> false
             adjusterCount--;
         }
-        emit InsuranceRegistry_AdjustersUpdated(adjuster_, status_, id_);
+        emit AdjusterOperations_AdjustersUpdated(adjuster_, status_, id_);
     }
 
     function isAdjuster(address adjuster_) external view returns (bool) {
