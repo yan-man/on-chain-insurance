@@ -43,21 +43,15 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
     );
     error InsuranceCoverageNFT_InactivePolicy();
 
-    constructor(address managerContract_) ERC721("InsuranceCoverage", "ICNFT") {
-        _grantRole(MANAGER_CONTRACT, managerContract_);
-    }
-
-    // functions:
-    // supportsInterface to override parents
-    // mint - to mint NFT, manager contract only
-    // burn - to burn NFT, owner only
-    //
-
     modifier onlyTokenOwner(uint256 tokenId_) {
         if (msg.sender != ownerOf(tokenId_)) {
             revert InsuranceCoverageNFT_NotOwner();
         }
         _;
+    }
+
+    constructor(address managerContract_) ERC721("InsuranceCoverage", "ICNFT") {
+        _grantRole(MANAGER_CONTRACT, managerContract_);
     }
 
     function mint(
@@ -101,7 +95,7 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         tokenId++;
     }
 
-    function burn(uint256 tokenId_) public onlyTokenOwner(tokenId_) {
+    function burn(uint256 tokenId_) external onlyTokenOwner(tokenId_) {
         _burn(tokenId_);
 
         policyDetails[tokenId_].endTime = block.timestamp;
