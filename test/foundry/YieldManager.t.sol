@@ -8,11 +8,11 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {CustomTest} from "../helpers/CustomTest.t.sol";
 import {Test, console} from "forge-std/Test.sol";
 
-import {DeployYieldManager} from "../../script/DeployYieldManager.s.sol";
-import {MockPool} from "../../contracts/mocks/MockPool.sol";
 import {AdjusterOperations} from "../../contracts/AdjusterOperations.sol";
+import {DeployYieldManager} from "../../script/DeployYieldManager.s.sol";
 import {InsuranceCoverageNFT} from "../../contracts/InsuranceCoverageNFT.sol";
 import {InsuranceManager} from "../../contracts/InsuranceManager.sol";
+import {MockPool} from "../../contracts/mocks/MockPool.sol";
 import {SampleERC20} from "../../contracts/mocks/SampleERC20.sol";
 import {YieldManager} from "../../contracts/YieldManager.sol";
 

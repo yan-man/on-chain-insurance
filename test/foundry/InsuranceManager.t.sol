@@ -10,13 +10,12 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {CustomTest} from "../helpers/CustomTest.t.sol";
 import {Test, console} from "forge-std/Test.sol";
 
-// import {DeployInsuranceCoverageNFT} from "../../script/DeployInsuranceCoverageNFT.s.sol";
+import {AdjusterOperations} from "../../contracts/AdjusterOperations.sol";
 import {DeployAdjusterOperations} from "../../script/DeployAdjusterOperations.s.sol";
 import {DeployInsuranceManager} from "../../script/DeployInsuranceManager.s.sol";
-
-import {AdjusterOperations} from "../../contracts/AdjusterOperations.sol";
 import {InsuranceCoverageNFT} from "../../contracts/InsuranceCoverageNFT.sol";
 import {InsuranceManager} from "../../contracts/InsuranceManager.sol";
+import {MockPool} from "../../contracts/mocks/MockPool.sol";
 import {SampleERC20} from "../../contracts/mocks/SampleERC20.sol";
 
 contract InsuranceManagerTest is Test, CustomTest {
@@ -32,7 +31,10 @@ contract InsuranceManagerTest is Test, CustomTest {
     InsuranceCoverageNFT public insuranceCoverageNFT;
     AdjusterOperations public adjusterOperations;
     InsuranceManager public insuranceManager;
-    SampleERC20 public sampleERC20;
+    MockPool public mockPool;
+    SampleERC20 public mockToken;
+    SampleERC20 public mockAToken;
+
     address public masterAdmin;
     address[] public approverAdmins;
     address[] public adjusterAdmins;
@@ -40,6 +42,17 @@ contract InsuranceManagerTest is Test, CustomTest {
 
     function setUp() external {
         masterAdmin = vm.addr(getCounterAndIncrement());
+
+        address[] memory tokens = new address[](1);
+        address[] memory aTokens = new address[](1);
+
+        mockToken = new SampleERC20();
+        mockAToken = new SampleERC20();
+
+        tokens[0] = address(mockToken);
+        aTokens[0] = address(mockAToken);
+
+        mockPool = new MockPool(tokens, aTokens);
 
         DeployAdjusterOperations deployAdjusterOperations = new DeployAdjusterOperations();
         deployAdjusterOperations.setConstructorArgs(
@@ -49,12 +62,11 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         adjusterOperations = deployAdjusterOperations.run();
 
-        sampleERC20 = new SampleERC20();
-
         deployInsuranceManager = new DeployInsuranceManager();
         args = DeployInsuranceManager.InsuranceManagerArgs({
             adjusterOperationsAddress: address(adjusterOperations),
-            paymentTokenAddress: address(sampleERC20)
+            paymentTokenAddress: address(mockToken),
+            poolAddress: address(mockPool)
         });
         deployInsuranceManager.setConstructorArgs(args);
 
@@ -112,10 +124,7 @@ contract InsuranceManagerTest is Test, CustomTest {
             address(insuranceManager.adjusterOperations()),
             address(adjusterOperations)
         );
-        assertEq(
-            address(insuranceManager.paymentToken()),
-            address(sampleERC20)
-        );
+        assertEq(address(insuranceManager.paymentToken()), address(mockToken));
         assertEq(
             insuranceManager.insuranceCoverageNFT().name(),
             "InsuranceCoverage"
@@ -305,7 +314,7 @@ contract InsuranceManagerTest is Test, CustomTest {
         assertEq(
             _premium1,
             insuranceManager.calculatePremium(_value0, riskFactor_) *
-                (10 ** sampleERC20.decimals()),
+                (10 ** mockToken.decimals()),
             "premium mismatch"
         );
         assertEq(_isPaid1, false, "isPaid mismatch");
@@ -525,8 +534,8 @@ contract InsuranceManagerTest is Test, CustomTest {
 
         uint256 _amount = (numSeconds_ * _premium1);
         vm.startPrank(_applicant0);
-        sampleERC20.mint(_applicant0, _amount);
-        sampleERC20.approve(address(insuranceManager), _amount);
+        mockToken.mint(_applicant0, _amount);
+        mockToken.approve(address(insuranceManager), _amount);
         vm.expectEmit(true, false, false, false);
         emit InsuranceManager.PolicyActivated(_applicationId);
         insuranceManager.activatePolicy(_applicationId, _amount);
@@ -663,8 +672,8 @@ contract InsuranceManagerTest is Test, CustomTest {
 
         uint256 _amount = (numSeconds_ * _premium1);
         vm.startPrank(_applicant0);
-        sampleERC20.mint(_applicant0, _amount);
-        sampleERC20.approve(address(insuranceManager), _amount);
+        mockToken.mint(_applicant0, _amount);
+        mockToken.approve(address(insuranceManager), _amount);
         insuranceManager.activatePolicy(_applicationId, _amount);
         vm.stopPrank();
 
@@ -681,8 +690,8 @@ contract InsuranceManagerTest is Test, CustomTest {
         uint256 _newAmount = (_extensionTime * _premium1);
 
         vm.startPrank(extender_);
-        sampleERC20.mint(extender_, _newAmount);
-        sampleERC20.approve(address(insuranceManager), _newAmount);
+        mockToken.mint(extender_, _newAmount);
+        mockToken.approve(address(insuranceManager), _newAmount);
         insuranceManager.extendCoverage(_applicationId, _newAmount);
         vm.stopPrank();
     }
@@ -716,8 +725,8 @@ contract InsuranceManagerTest is Test, CustomTest {
 
         uint256 _amount = (_numSeconds * _premium1);
         vm.startPrank(_applicant0);
-        sampleERC20.mint(_applicant0, _amount);
-        sampleERC20.approve(address(insuranceManager), _amount);
+        mockToken.mint(_applicant0, _amount);
+        mockToken.approve(address(insuranceManager), _amount);
 
         insuranceManager.activatePolicy(_applicationId, _amount);
         vm.expectEmit(true, false, false, false);
@@ -769,8 +778,8 @@ contract InsuranceManagerTest is Test, CustomTest {
 
         uint256 _amount = (_numSeconds * _premium1);
         vm.startPrank(_applicant0);
-        sampleERC20.mint(_applicant0, _amount);
-        sampleERC20.approve(address(insuranceManager), _amount);
+        mockToken.mint(_applicant0, _amount);
+        mockToken.approve(address(insuranceManager), _amount);
 
         insuranceManager.activatePolicy(_applicationId, _amount);
 
@@ -816,8 +825,8 @@ contract InsuranceManagerTest is Test, CustomTest {
 
         uint256 _amount = (_numSeconds * _premium1);
         vm.startPrank(_applicant0);
-        sampleERC20.mint(_applicant0, _amount);
-        sampleERC20.approve(address(insuranceManager), _amount);
+        mockToken.mint(_applicant0, _amount);
+        mockToken.approve(address(insuranceManager), _amount);
 
         insuranceManager.activatePolicy(_applicationId, _amount);
 

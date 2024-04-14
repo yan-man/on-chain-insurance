@@ -9,6 +9,7 @@ contract DeployInsuranceManager is Script {
     struct InsuranceManagerArgs {
         address adjusterOperationsAddress;
         address paymentTokenAddress;
+        address poolAddress;
     }
     InsuranceManagerArgs public args;
     InsuranceManager public insuranceManager;
@@ -17,7 +18,8 @@ contract DeployInsuranceManager is Script {
         vm.startBroadcast();
         insuranceManager = new InsuranceManager(
             args.adjusterOperationsAddress,
-            args.paymentTokenAddress
+            args.paymentTokenAddress,
+            args.poolAddress
         );
         vm.stopBroadcast();
         return insuranceManager;

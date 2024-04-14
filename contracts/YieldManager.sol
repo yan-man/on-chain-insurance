@@ -51,7 +51,6 @@ contract YieldManager is AccessControlEnumerable {
         DataTypes.ReserveData memory collateralData = pool.getReserveData(
             paymentToken_
         );
-        console.log("here");
         return collateralData.aTokenAddress;
     }
 }

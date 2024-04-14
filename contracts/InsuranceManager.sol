@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {InsuranceCoverageNFT} from "./InsuranceCoverageNFT.sol";
 import {AdjusterOperations} from "./AdjusterOperations.sol";
+import {YieldManager} from "./YieldManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
@@ -34,6 +35,7 @@ contract InsuranceManager {
     mapping(uint256 => Application) public applications; // applicationId => Application
     InsuranceCoverageNFT public insuranceCoverageNFT;
     AdjusterOperations public adjusterOperations;
+    YieldManager public yieldManager;
     IERC20 public paymentToken;
     uint256 public nextApplicationId;
     mapping(bytes32 => bool) private _uniqueApplicationHashes; // keccak256-hashed carDetails => in progress
@@ -77,8 +79,17 @@ contract InsuranceManager {
         _;
     }
 
-    constructor(address adjusterOpsAddress_, address paymentTokenAddress_) {
+    constructor(
+        address adjusterOpsAddress_,
+        address paymentTokenAddress_,
+        address poolAddress_
+    ) {
         insuranceCoverageNFT = new InsuranceCoverageNFT(address(this));
+        yieldManager = new YieldManager(
+            address(this),
+            poolAddress_,
+            paymentTokenAddress_
+        );
         adjusterOperations = AdjusterOperations(adjusterOpsAddress_);
         paymentToken = IERC20(paymentTokenAddress_);
     }
