@@ -105,6 +105,7 @@ sequenceDiagram
 
 There are many potential improvements possible for this project:
 
+- testing: full coverage is necessary but not sufficient. More edge cases can be covered, as well as a bit of missing branch coverage. Invariant tests and deeper fuzz testing is also possible.
 - more optimized yield: there could be more flexible yield rather than purely AaveV3 related lending. There could also be more complex and clean management of the treasury. In particular, the YieldManager contract should be updated to define treasury admins that are allowed to withdraw the yield for profit. As it currently stands, tokens can be locked inside the contract without a means of withdrawing this yield.
 - governance features for Adjuster approval: currently the Master Admin can just set up Approvers, and they can just set up Adjusters. This process can be much more decentralized and optimized by providing governance, perhaps with a governance token, which would allow these admins to be added via vote.
 - Adjuster management: Adjusters can also be managed more optimally by having a reputation system that will result in penalties for poor performance. Also, they do not currently earn anything from the yield, and this would improve the overall incentive structure of the system. Also, only 1 Adjuster is required to review an application, which can be flawed.
