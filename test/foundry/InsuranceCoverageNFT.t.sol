@@ -92,7 +92,7 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
             bool _isActive
         ) = insuranceCoverageNFT.policyDetails(_tokenId);
         assertEq(_id, _tokenId);
-        assertEq(_premium, _premium);
+        assertEq(_premium, premium_);
         assertEq(_startDate, block.timestamp);
         assertEq(_endDate, block.timestamp + coverageDuration_);
         assertTrue(_isActive);
@@ -181,12 +181,57 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         vm.stopPrank();
 
         uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
+        (, uint256 _premium0, uint256 _startDate0, , ) = insuranceCoverageNFT
+            .policyDetails(_tokenId);
+
+        skip(3600); // 1 hour
 
         vm.startPrank(to_);
         vm.expectEmit(true, true, true, false);
         emit IERC721.Transfer(to_, address(0), _tokenId);
         vm.expectEmit(true, false, false, false);
         emit InsuranceCoverageNFT.PolicyInactive(_tokenId);
+        insuranceCoverageNFT.burn(_tokenId);
+        vm.stopPrank();
+
+        (
+            ,
+            uint256 _premium1,
+            uint256 _startDate1,
+            uint256 _endDate1,
+            bool _isActive1
+        ) = insuranceCoverageNFT.policyDetails(_tokenId);
+        // unchanged values
+        assertEq(_premium0, _premium1);
+        assertEq(_startDate0, _startDate1);
+        // updated values
+        assertEq(_endDate1, block.timestamp);
+        assertFalse(_isActive1);
+    }
+
+    function test_burn_fail_invalidOwner(
+        address to_,
+        uint256 premium_,
+        uint256 coverageDuration_,
+        address nonOwner_
+    ) public {
+        /// @dev to_ also cannot be a contract address unless it implements onERC721Received
+        vm.assume(
+            to_ != address(0) && to_.code.length == 0 && to_ != nonOwner_
+        );
+        vm.assume(premium_ > 0);
+        vm.assume(coverageDuration_ > 0 && coverageDuration_ <= 365 days);
+
+        vm.startPrank(args.managerContract);
+        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        vm.stopPrank();
+
+        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
+
+        vm.startPrank(nonOwner_);
+        vm.expectRevert(
+            InsuranceCoverageNFT.InsuranceCoverageNFT_NotOwner.selector
+        );
         insuranceCoverageNFT.burn(_tokenId);
         vm.stopPrank();
     }

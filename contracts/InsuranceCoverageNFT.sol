@@ -8,8 +8,8 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
     struct PolicyDetails {
         uint256 id;
         uint256 premium; // in token decimals/sec
-        uint256 startDate; // timestamp
-        uint256 endDate; // timestamp
+        uint256 startTime; // timestamp
+        uint256 endTime; // timestamp
         bool isActive;
     }
 
@@ -21,8 +21,8 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         uint256 indexed tokenId,
         address indexed to,
         uint256 indexed premium,
-        uint256 startDate,
-        uint256 endDate,
+        uint256 startTime,
+        uint256 endTime,
         bool isActive
     );
     event PolicyInactive(uint256 indexed tokenId);
@@ -74,8 +74,8 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         policyDetails[_tokenId] = PolicyDetails({
             id: _tokenId,
             premium: premium_,
-            startDate: _startTime,
-            endDate: _endTime,
+            startTime: _startTime,
+            endTime: _endTime,
             isActive: _isActive
         });
 
@@ -90,31 +90,33 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         tokenId++;
     }
 
+    function burn(uint256 tokenId_) public onlyTokenOwner(tokenId_) {
+        _burn(tokenId_);
+
+        policyDetails[tokenId_].endTime = block.timestamp;
+        policyDetails[tokenId_].isActive = false;
+
+        emit PolicyInactive(tokenId_);
+    }
+
     // function extendCoverage(
     //     uint256 tokenId_,
     //     uint256 coverageDuration_
     // ) external onlyTokenOwner(tokenId_) {
     //     PolicyDetails memory _policy = policyDetails[tokenId_];
-    //     if (!_policy.isActive || _policy.endDate < block.timestamp) {
+    //     if (!_policy.isActive || _policy.endTime < block.timestamp) {
     //         revert InsuranceCoverageNFT_InactivePolicy();
     //     }
 
     //     if (
     //         coverageDuration_ == 0 ||
-    //         coverageDuration_ > (_policy.endDate - block.timestamp)
+    //         coverageDuration_ > (_policy.endTime - block.timestamp)
     //     ) {
     //         revert InsuranceCoverageNFT_InvalidCoverageDuration(
     //             coverageDuration_
     //         );
     //     }
     // }
-
-    function burn(uint256 tokenId_) public onlyTokenOwner(tokenId_) {
-        _burn(tokenId_);
-        policyDetails[tokenId_].isActive = false;
-
-        emit PolicyInactive(tokenId_);
-    }
 
     function supportsInterface(
         bytes4 interfaceId
