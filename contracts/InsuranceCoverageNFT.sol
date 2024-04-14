@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
     struct PolicyDetails {
         uint256 id;
-        uint256 premium; // in token decimals/sec
+        uint256 premium; // in paymentToken, in $0.01/sec (ie 10 ** (decimals - 2))
         uint256 startTime; // timestamp
         uint256 endTime; // timestamp
         bool isActive;
