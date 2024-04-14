@@ -88,6 +88,16 @@ contract InsuranceManagerTest is Test, CustomTest {
         vm.stopPrank();
     }
 
+    function _createPendingApplication(
+        uint256 value_,
+        bytes32 carDetails_,
+        address applicant_
+    ) internal {
+        vm.startPrank(applicant_);
+        insuranceManager.submitApplication(value_, carDetails_);
+        vm.stopPrank();
+    }
+
     function test_deploymentParams_success() external view {
         assertTrue(adjusterOperations.isInitialized());
         assertEq(
@@ -146,6 +156,23 @@ contract InsuranceManagerTest is Test, CustomTest {
         assertTrue(_status == InsuranceManager.ApplicationStatus.Pending);
     }
 
+    function test_submitApplication_fail_notInitialized(
+        uint256 value_,
+        bytes32 carDetails_,
+        address applicant_
+    ) external {
+        vm.assume(applicant_ != address(0));
+        value_ = bound(value_, 1, insuranceManager.MAX_VALUE());
+        _disableAdjuster(adjusterAdmins[0]);
+
+        vm.startPrank(applicant_);
+        vm.expectRevert(
+            InsuranceManager.InsuranceManager_NotInitialized.selector
+        );
+        insuranceManager.submitApplication(value_, carDetails_);
+        vm.stopPrank();
+    }
+
     function test_submitApplication_fail_invalidValue(
         uint256 value_,
         bytes32 carDetails_,
@@ -187,5 +214,39 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         insuranceManager.submitApplication(value_, carDetails_);
         vm.stopPrank();
+    }
+
+    function test_reviewApplication_success(
+        uint256 riskFactor_,
+        InsuranceManager.ApplicationStatus status_
+    ) external {
+        // vm.assume(
+        //     applicationId_ < insuranceManager.nextApplicationId() &&
+        //         status_ != InsuranceManager.ApplicationStatus.Pending
+        // );
+        // _createPendingApplication();
+        // vm.startPrank(approverAdmins[0]);
+        // vm.expectEmit(true, true, false, true);
+        // emit InsuranceManager.ApplicationReviewed(applicationId_, status_);
+        // insuranceManager.reviewApplication(
+        //     applicationId_,
+        //     riskFactor_,
+        //     status_
+        // );
+        // vm.stopPrank();
+        // (
+        //     address _applicant,
+        //     uint256 _value,
+        //     uint256 _riskFactor,
+        //     uint256 _submissionTimestamp,
+        //     uint256 _premium,
+        //     bytes32 _carDetails,
+        //     bool _isPaid,
+        //     InsuranceManager.ApplicationStatus _status
+        // ) = insuranceManager.applications(applicationId_);
+        // assertEq(_status, status_);
+        // if (status_ == InsuranceManager.ApplicationStatus.Approved) {
+        //     assertEq(_riskFactor, riskFactor_);
+        // }
     }
 }

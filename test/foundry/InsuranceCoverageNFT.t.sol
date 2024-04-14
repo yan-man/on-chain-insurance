@@ -93,10 +93,12 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
             block.timestamp + coverageDuration_,
             _expectedIsActive
         );
-        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            coverageDuration_
+        );
         vm.stopPrank();
-
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (
             uint256 _id,
             uint256 _premium,
@@ -205,10 +207,13 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         );
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            coverageDuration_
+        );
         vm.stopPrank();
 
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (, uint256 _premium0, uint256 _startTime0, , ) = insuranceCoverageNFT
             .policyDetails(_tokenId);
 
@@ -255,10 +260,12 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         );
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            coverageDuration_
+        );
         vm.stopPrank();
-
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
 
         vm.startPrank(nonOwner_);
         vm.expectRevert(
@@ -286,8 +293,11 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
             .MAX_COVERAGE_DURATION() - coverageExtension_;
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, _coverageDuration);
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            _coverageDuration
+        );
         (
             ,
             uint256 _premium0,
@@ -340,10 +350,13 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
             .MAX_COVERAGE_DURATION() - coverageExtension_;
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, _coverageDuration);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            _coverageDuration
+        );
         vm.stopPrank();
 
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (
             ,
             uint256 _premium0,
@@ -396,10 +409,13 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
             .MAX_COVERAGE_DURATION() - coverageExtension_;
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, _coverageDuration);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            _coverageDuration
+        );
         vm.stopPrank();
 
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (, uint256 _premium0, uint256 _startTime0, , ) = insuranceCoverageNFT
             .policyDetails(_tokenId);
 
@@ -448,13 +464,16 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
             .MAX_COVERAGE_DURATION() - coverageExtension_;
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, _coverageDuration);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            _coverageDuration
+        );
         vm.stopPrank();
 
         // after coverage duration, so that policy is expired
         skip(_coverageDuration + 1);
 
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (
             ,
             uint256 _premium0,
@@ -500,10 +519,13 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         uint _coverageExtension = 0;
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            coverageDuration_
+        );
         vm.stopPrank();
 
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (
             ,
             uint256 _premium0,
@@ -555,10 +577,13 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
             .MAX_COVERAGE_DURATION() + coverageDuration_;
 
         vm.startPrank(args.managerContract);
-        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        uint256 _tokenId = insuranceCoverageNFT.mint(
+            to_,
+            premium_,
+            coverageDuration_
+        );
         vm.stopPrank();
 
-        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
         (
             ,
             uint256 _premium0,

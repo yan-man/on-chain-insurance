@@ -207,40 +207,6 @@ contract AdjusterOperationsTest is Test, CustomTest {
         assertFalse(adjusterOperations.isInitialized());
     }
 
-    // function test_setInsuranceAdjuster_success_editIdOnly(
-    //     address adjuster_,
-    //     bool status_,
-    //     string calldata newId_
-    // ) external {
-    //     address _approver = vm.addr(getCounterAndIncrement());
-    //     vm.assume(
-    //         adjuster_ != address(0) &&
-    //             adjuster_ != args.masterAdmin &&
-    //             adjuster_ != _approver
-    //     );
-
-    //     // initialize adjuster
-    //     string memory _id = "id";
-    //     _addApprover(_approver);
-    //     vm.startPrank(_approver);
-    //     adjusterOperations.setInsuranceAdjuster(adjuster_, status_);
-    //     uint256 _initialAdjusterCount = adjusterOperations.adjusterCount();
-    //     assertEq(_initialAdjusterCount, status_ ? 1 : 0);
-
-    //     adjusterOperations.setInsuranceAdjuster(adjuster_, newId_, status_);
-    //     vm.stopPrank();
-
-    //     uint256 _finalAdjusterCount = adjusterOperations.adjusterCount();
-
-    //     assertEq(adjusterOperations.isAdjuster(adjuster_), status_);
-    //     assertEq(_initialAdjusterCount, _finalAdjusterCount); // status didn't change, so adjuster count should remain the same
-    //     (address _adjuster, string memory _savedId, ) = adjusterOperations
-    //         .adjusters(adjuster_);
-    //     assertEq(_adjuster, adjuster_);
-    //     assertEq(_savedId, newId_);
-    //     assertFalse(adjusterOperations.isInitialized());
-    // }
-
     function test_setInsuranceAdjuster_fail_invalidApproverAdmin(
         address nonApproverAdmin_,
         address adjuster_,
@@ -251,7 +217,7 @@ contract AdjusterOperationsTest is Test, CustomTest {
                 adjuster_ != args.masterAdmin &&
                 adjuster_ != nonApproverAdmin_
         );
-        string memory _id = "id";
+
         vm.startPrank(nonApproverAdmin_);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -275,7 +241,7 @@ contract AdjusterOperationsTest is Test, CustomTest {
         );
         address _adjuster = address(0);
         _addApprover(approverAdmin_);
-        string memory _id = "id";
+
         vm.startPrank(approverAdmin_);
         vm.expectRevert(
             AdjusterOperations.AdjusterOperations_InvalidZeroAddress.selector
