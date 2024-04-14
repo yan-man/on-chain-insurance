@@ -8,7 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract InsuranceManager {
-    using RiskManager for uint256;
+    using RiskManager for *;
 
     enum ApplicationStatus {
         Pending,
@@ -138,7 +138,7 @@ contract InsuranceManager {
         }
         if (status_ == ApplicationStatus.Approved) {
             _application.premium =
-                _application.value.calculatePremium(riskFactor_) *
+                RiskManager.calculatePremium(_application.value, riskFactor_) *
                 (10 ** ERC20(address(paymentToken)).decimals());
             _application.riskFactor = riskFactor_;
         } else if (status_ == ApplicationStatus.Rejected) {
@@ -169,7 +169,7 @@ contract InsuranceManager {
         uint256 _tokenId = insuranceCoverageNFT.mint(
             _application.applicant,
             _application.premium,
-            amount_.calculateDuration(_application.premium)
+            RiskManager.calculateDuration(amount_, _application.premium)
         );
         _application.isPaid = true;
         _application.tokenId = _tokenId;
