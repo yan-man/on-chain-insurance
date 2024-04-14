@@ -7,6 +7,8 @@ import {YieldManager} from "./YieldManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+/// @title InsuranceManager
+/// @author YBM
 contract InsuranceManager {
     enum ApplicationStatus {
         Pending,
@@ -82,7 +84,7 @@ contract InsuranceManager {
     }
 
     constructor(
-        address adjusterOpsAddress_,
+        address adjusterOperationsAddress_,
         address paymentTokenAddress_,
         address poolAddress_
     ) {
@@ -92,10 +94,13 @@ contract InsuranceManager {
             poolAddress_,
             paymentTokenAddress_
         );
-        adjusterOperations = AdjusterOperations(adjusterOpsAddress_);
+        adjusterOperations = AdjusterOperations(adjusterOperationsAddress_);
         paymentToken = IERC20(paymentTokenAddress_);
     }
 
+    /// @dev submitApplication to apply for insurance
+    /// @param value_ The insured value in paymentToken with decimals
+    /// @param carDetails_ The keccak256-hashed car details
     function submitApplication(
         uint256 value_,
         bytes32 carDetails_
@@ -130,6 +135,10 @@ contract InsuranceManager {
         return _applicationId;
     }
 
+    /// @dev reviewApplication to approve or reject an application
+    /// @param applicationId_ The application ID
+    /// @param riskFactor_ The risk factor, ranging from 1 to 100
+    /// @param status_ The application status
     function reviewApplication(
         uint256 applicationId_,
         uint256 riskFactor_,
@@ -163,6 +172,9 @@ contract InsuranceManager {
         emit ApplicationReviewed(applicationId_, status_);
     }
 
+    /// @dev activatePolicy to activate an approved policy
+    /// @param applicationId_ The application ID
+    /// @param amount_ The amount to be paid in paymentToken
     function activatePolicy(uint256 applicationId_, uint256 amount_) external {
         Application memory _application = applications[applicationId_];
         if (_application.status != ApplicationStatus.Approved) {
@@ -189,6 +201,9 @@ contract InsuranceManager {
         emit PolicyActivated(applicationId_);
     }
 
+    /// @dev extendCoverage to extend the coverage duration of an active policy
+    /// @param applicationId_ The application ID
+    /// @param amount_ The amount to be paid in paymentToken
     function extendCoverage(uint256 applicationId_, uint256 amount_) external {
         Application memory _application = applications[applicationId_];
         insuranceCoverageNFT.extendCoverage(
@@ -197,6 +212,8 @@ contract InsuranceManager {
         );
     }
 
+    /// @dev claimPolicy to claim the insurance policy
+    /// @param applicationId_ The application ID
     function claimPolicy(uint256 applicationId_) external {
         Application memory _application = applications[applicationId_];
         if (insuranceCoverageNFT.ownerOf(_application.tokenId) != msg.sender) {
@@ -218,12 +235,10 @@ contract InsuranceManager {
         emit PolicyClaimed(applicationId_);
     }
 
-    /**
-     * @dev Calculates insurance premium based on the insured value and risk factor.
-     * @param value_ The insured value.
-     * @param riskFactor_ The risk factor, ranging from 1 to 100.
-     * @return premium The calculated premium in paymentToken, with decimals.
-     */
+    /// @dev Calculates insurance premium based on the insured value and risk factor.
+    /// @param value_ The insured value.
+    /// @param riskFactor_ The risk factor, ranging from 1 to 100.
+    /// @return premium The calculated premium in paymentToken, with decimals.
     function calculatePremium(
         uint256 value_,
         uint256 riskFactor_
@@ -240,6 +255,10 @@ contract InsuranceManager {
         return premium;
     }
 
+    /// @dev Calculates the duration of the insurance policy based on the amount of token paid and premium cost
+    /// @param amount_ The amount to be paid in paymentToken
+    /// @param premium_ The premium to be paid in paymentToken
+    /// @return duration The duration of the insurance policy in seconds
     function _calculateDuration(
         uint256 amount_,
         uint256 premium_

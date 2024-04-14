@@ -4,10 +4,12 @@ pragma solidity ^0.8.24;
 import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
+/// @title InsuranceCoverageNFT
+/// @author YBM
 contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
     struct PolicyDetails {
         uint256 id;
-        uint256 premium; // in paymentToken, in $0.01/sec (ie 10 ** (decimals - 2))
+        uint256 premium; // in paymentToken, including decimals, of cost per second
         uint256 startTime; // timestamp
         uint256 endTime; // timestamp
         bool isActive;
@@ -54,6 +56,10 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         _grantRole(MANAGER_CONTRACT, managerContract_);
     }
 
+    /// @dev mint a new insurance policy
+    /// @param to_ recipient of the insurance policy
+    /// @param premium_  in paymentToken, in cost per second
+    /// @param coverageDuration_ in seconds
     function mint(
         address to_,
         uint256 premium_,
@@ -96,6 +102,8 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         return _tokenId;
     }
 
+    /// @dev burn an insurance policy NFT
+    /// @param tokenId_ tokenId of the policy to be burned
     function burn(uint256 tokenId_) external onlyTokenOwner(tokenId_) {
         _burn(tokenId_);
 
@@ -105,6 +113,9 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         emit PolicyInactive(tokenId_);
     }
 
+    /// @dev extend the coverage of an active policy
+    /// @param tokenId_ tokenId of the policy to be extended
+    /// @param coverageDuration_ in seconds
     function extendCoverage(
         uint256 tokenId_,
         uint256 coverageDuration_
@@ -138,6 +149,8 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         );
     }
 
+    /// @dev just needs to be overridden
+    /// @param interfaceId interface id
     function supportsInterface(
         bytes4 interfaceId
     )
