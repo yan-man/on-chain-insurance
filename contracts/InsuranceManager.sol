@@ -6,7 +6,6 @@ import {AdjusterOperations} from "./AdjusterOperations.sol";
 import {YieldManager} from "./YieldManager.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {console} from "forge-std/Test.sol";
 
 contract InsuranceManager {
     enum ApplicationStatus {
@@ -183,7 +182,6 @@ contract InsuranceManager {
             _application.premium,
             _calculateDuration(amount_, _application.premium)
         );
-        console.log("calc", _calculateDuration(amount_, _application.premium));
         _application.isPaid = true;
         _application.tokenId = _tokenId;
         applications[applicationId_] = _application;
