@@ -19,6 +19,7 @@ contract InsuranceManager is AccessControlEnumerable {
     }
     struct Application {
         address applicant;
+        uint256 tokenId;
         uint256 value; // in paymentToken including decimals
         uint256 riskFactor; // 1-100
         uint256 submissionTimestamp;
@@ -104,6 +105,7 @@ contract InsuranceManager is AccessControlEnumerable {
         _uniqueApplicationHashes[carDetails_] = true;
         applications[_applicationId] = Application({
             applicant: msg.sender,
+            tokenId: 0,
             value: value_,
             riskFactor: 0, // Initial risk factor set to 0
             premium: 0, // Initial premium set to 0
@@ -163,18 +165,23 @@ contract InsuranceManager is AccessControlEnumerable {
             address(this),
             amount_
         );
-        insuranceCoverageNFT.mint(
+        uint256 _tokenId = insuranceCoverageNFT.mint(
             _application.applicant,
             _application.premium,
             amount_.calculateDuration(_application.premium)
         );
         _application.isPaid = true;
+        _application.tokenId = _tokenId;
         applications[applicationId_] = _application;
 
         emit PolicyActivated(applicationId_);
     }
 
-    // function claimPolicy (uint256 tokenId_) external {
-    //     insuranceCoverageNFT.burn(tokenId_);
-    // }
+    function extendCoverage(uint256 applicationId_, uint256 amount_) external {
+        Application memory _application = applications[applicationId_];
+        insuranceCoverageNFT.extendCoverage(
+            _application.tokenId,
+            amount_.calculateDuration(_application.premium)
+        );
+    }
 }

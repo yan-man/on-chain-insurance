@@ -59,6 +59,7 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
         uint256 premium_,
         uint256 coverageDuration_
     ) external onlyRole(MANAGER_CONTRACT) returns (uint256) {
+        tokenId++;
         if (premium_ == 0) {
             revert InsuranceCoverageNFT_InvalidPremium();
         }
@@ -92,7 +93,6 @@ contract InsuranceCoverageNFT is AccessControlEnumerable, ERC721Enumerable {
             _endTime,
             _isActive
         );
-        tokenId++;
         return _tokenId;
     }
 

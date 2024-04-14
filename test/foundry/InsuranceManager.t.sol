@@ -155,6 +155,7 @@ contract InsuranceManagerTest is Test, CustomTest {
 
         (
             address _applicant,
+            uint256 _tokenId,
             uint256 _value,
             uint256 _riskFactor,
             uint256 _submissionTimestamp,
@@ -166,6 +167,7 @@ contract InsuranceManagerTest is Test, CustomTest {
         ) = insuranceManager.applications(_applicationId);
 
         assertEq(_applicant, applicant_);
+        assertEq(_tokenId, 0);
         assertEq(_value, value_);
         assertEq(_riskFactor, 0);
         assertEq(_submissionTimestamp, block.timestamp);
@@ -285,7 +287,8 @@ contract InsuranceManagerTest is Test, CustomTest {
         vm.stopPrank();
         (
             ,
-            uint256 _value1,
+            ,
+            ,
             uint256 _riskFactor1,
             ,
             uint256 _reviewTimestamp1,
@@ -295,7 +298,6 @@ contract InsuranceManagerTest is Test, CustomTest {
             InsuranceManager.ApplicationStatus _status1
         ) = insuranceManager.applications(_applicationId);
 
-        assertEq(_value1, _value0, "value mismatch");
         assertEq(_riskFactor1, riskFactor_, "riskFactor mismatch");
         assertEq(
             _reviewTimestamp1,
@@ -339,6 +341,7 @@ contract InsuranceManagerTest is Test, CustomTest {
         vm.stopPrank();
         (
             address _applicant1,
+            uint256 _tokenId,
             uint256 _value1,
             uint256 _riskFactor1,
             ,
@@ -350,6 +353,7 @@ contract InsuranceManagerTest is Test, CustomTest {
         ) = insuranceManager.applications(_applicationId);
 
         assertEq(_applicant1, _applicant0, "applicant mismatch");
+        assertEq(_tokenId, 0, "tokenId mismatch");
         assertEq(_value1, _value0, "value mismatch");
         assertEq(_riskFactor1, 0, "riskFactor mismatch");
         assertEq(
@@ -490,7 +494,7 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         vm.stopPrank();
 
-        (, , , , , uint256 _premium1, , , ) = insuranceManager.applications(
+        (, , , , , , uint256 _premium1, , , ) = insuranceManager.applications(
             _applicationId
         );
 
@@ -503,10 +507,10 @@ contract InsuranceManagerTest is Test, CustomTest {
         insuranceManager.activatePolicy(_applicationId, _amount);
         vm.stopPrank();
 
-        (, , , , , , , bool _isPaid, ) = insuranceManager.applications(
-            _applicationId
-        );
+        (, uint256 _tokenId, , , , , , , bool _isPaid, ) = insuranceManager
+            .applications(_applicationId);
         assertTrue(_isPaid);
+        assertEq(_applicant0, insuranceCoverageNFT.ownerOf(_tokenId));
     }
 
     function test_activatePolicy_fail_invalidApplicationStatus(
@@ -539,7 +543,7 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         vm.stopPrank();
 
-        (, , , , , uint256 _premium1, , , ) = insuranceManager.applications(
+        (, , , , , , uint256 _premium1, , , ) = insuranceManager.applications(
             _applicationId
         );
 
@@ -582,7 +586,7 @@ contract InsuranceManagerTest is Test, CustomTest {
         );
         vm.stopPrank();
 
-        (, , , , , uint256 _premium1, , , ) = insuranceManager.applications(
+        (, , , , , , uint256 _premium1, , , ) = insuranceManager.applications(
             _applicationId
         );
 
