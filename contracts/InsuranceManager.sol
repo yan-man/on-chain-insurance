@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
-
 import {RiskManager} from "./libraries/RiskManager.sol";
 import {InsuranceCoverageNFT} from "./InsuranceCoverageNFT.sol";
 import {AdjusterOperations} from "./AdjusterOperations.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract InsuranceManager is AccessControlEnumerable {
+contract InsuranceManager {
     using RiskManager for uint256;
 
     enum ApplicationStatus {
@@ -60,6 +58,7 @@ contract InsuranceManager is AccessControlEnumerable {
     error InsuranceManager_InvalidApplicationStatus();
     error InsuranceManager_NotInitialized();
     error InsuranceManager_InvalidApplication(address applicant);
+    error InsuranceManager_InvalidClaimant(address claimant);
 
     modifier requireAdjusterOperationsInitialized() {
         if (!adjusterOperations.isInitialized()) {
@@ -187,13 +186,17 @@ contract InsuranceManager is AccessControlEnumerable {
         );
     }
 
-    // function claimPolicy(uint256 applicationId_) external {
-    //     Application memory _application = applications[applicationId_];
-    //     if (_application.status != ApplicationStatus.Approved) {
-    //         revert InsuranceManager_InvalidApplicationStatus();
-    //     }
-    //     insuranceCoverageNFT.burn(_application.tokenId);
-    //     _application.status = ApplicationStatus.Claimed;
-    //     applications[applicationId_] = _application;
-    // }
+    function claimPolicy(uint256 applicationId_) external {
+        Application memory _application = applications[applicationId_];
+        if (insuranceCoverageNFT.ownerOf(_application.tokenId) != msg.sender) {
+            revert InsuranceManager_InvalidClaimant(msg.sender);
+        }
+        if (_application.status != ApplicationStatus.Approved) {
+            revert InsuranceManager_InvalidApplicationStatus();
+        }
+        _application.status = ApplicationStatus.Claimed;
+        applications[applicationId_] = _application;
+
+        emit PolicyActivated(applicationId_);
+    }
 }

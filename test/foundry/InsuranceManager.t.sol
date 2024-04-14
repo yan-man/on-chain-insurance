@@ -689,4 +689,148 @@ contract InsuranceManagerTest is Test, CustomTest {
         insuranceManager.extendCoverage(_applicationId, _newAmount);
         vm.stopPrank();
     }
+
+    function test_claimPolicy_success() external {
+        uint256 _riskFactor = 10;
+        uint256 _numSeconds = 1000;
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 10000;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Approved;
+        vm.startPrank(adjusterAdmins[0]);
+        insuranceManager.reviewApplication(
+            _applicationId,
+            _riskFactor,
+            _status0
+        );
+        vm.stopPrank();
+
+        (, , , , , , uint256 _premium1, , , ) = insuranceManager.applications(
+            _applicationId
+        );
+
+        uint256 _amount = (_numSeconds * _premium1);
+        vm.startPrank(_applicant0);
+        sampleERC20.mint(_applicant0, _amount);
+        sampleERC20.approve(address(insuranceManager), _amount);
+
+        insuranceManager.activatePolicy(_applicationId, _amount);
+        vm.expectEmit(true, false, false, false);
+        emit InsuranceManager.PolicyActivated(_applicationId);
+        insuranceManager.claimPolicy(_applicationId);
+        vm.stopPrank();
+
+        (
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            InsuranceManager.ApplicationStatus _status
+        ) = insuranceManager.applications(_applicationId);
+        assertTrue(_status == InsuranceManager.ApplicationStatus.Claimed);
+    }
+
+    function test_claimPolicy_fail_invalidClaimant() external {
+        uint256 _riskFactor = 10;
+        uint256 _numSeconds = 1000;
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 10000;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Approved;
+        vm.startPrank(adjusterAdmins[0]);
+        insuranceManager.reviewApplication(
+            _applicationId,
+            _riskFactor,
+            _status0
+        );
+        vm.stopPrank();
+
+        (, , , , , , uint256 _premium1, , , ) = insuranceManager.applications(
+            _applicationId
+        );
+
+        uint256 _amount = (_numSeconds * _premium1);
+        vm.startPrank(_applicant0);
+        sampleERC20.mint(_applicant0, _amount);
+        sampleERC20.approve(address(insuranceManager), _amount);
+
+        insuranceManager.activatePolicy(_applicationId, _amount);
+
+        vm.stopPrank();
+        address _applicant1 = vm.addr(getCounterAndIncrement());
+        vm.startPrank(_applicant1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                InsuranceManager.InsuranceManager_InvalidClaimant.selector,
+                _applicant1
+            )
+        );
+        insuranceManager.claimPolicy(_applicationId);
+        vm.stopPrank();
+    }
+
+    function test_claimPolicy_fail_invalidApplicationStatus() external {
+        uint256 _riskFactor = 10;
+        uint256 _numSeconds = 1000;
+        address _applicant0 = vm.addr(getCounterAndIncrement());
+        uint256 _value0 = 10000;
+        bytes32 _carDetails0 = bytes32("carDetails");
+        uint256 _applicationId = _createPendingApplication(
+            _value0,
+            _carDetails0,
+            _applicant0
+        );
+
+        InsuranceManager.ApplicationStatus _status0 = InsuranceManager
+            .ApplicationStatus
+            .Approved;
+        vm.startPrank(adjusterAdmins[0]);
+        insuranceManager.reviewApplication(
+            _applicationId,
+            _riskFactor,
+            _status0
+        );
+        vm.stopPrank();
+
+        (, , , , , , uint256 _premium1, , , ) = insuranceManager.applications(
+            _applicationId
+        );
+
+        uint256 _amount = (_numSeconds * _premium1);
+        vm.startPrank(_applicant0);
+        sampleERC20.mint(_applicant0, _amount);
+        sampleERC20.approve(address(insuranceManager), _amount);
+
+        insuranceManager.activatePolicy(_applicationId, _amount);
+
+        vm.stopPrank();
+        vm.startPrank(_applicant0);
+        insuranceManager.claimPolicy(_applicationId);
+        vm.expectRevert(
+            InsuranceManager.InsuranceManager_InvalidApplicationStatus.selector
+        );
+        insuranceManager.claimPolicy(_applicationId);
+        vm.stopPrank();
+    }
 }
