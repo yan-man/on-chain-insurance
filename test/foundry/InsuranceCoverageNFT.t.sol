@@ -19,9 +19,9 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
     function setUp() external {
         deployInsuranceCoverageNFT = new DeployInsuranceCoverageNFT();
 
-        address _masterAdmin = vm.addr(getCounterAndIncrement());
+        address _managerContract = vm.addr(getCounterAndIncrement());
         args = DeployInsuranceCoverageNFT.InsuranceCoverageNFTArgs({
-            managerContract: _masterAdmin
+            managerContract: _managerContract
         });
         deployInsuranceCoverageNFT.setConstructorArgs(args);
 
@@ -54,5 +54,60 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
                 interfaceId != type(IAccessControl).interfaceId
         );
         assertFalse(insuranceCoverageNFT.supportsInterface(interfaceId));
+    }
+
+    function test_mint_success(
+        address to_,
+        uint256 premium_,
+        uint256 coverageDuration_
+    ) public {
+        /// @dev to_ also cannot be a contract address unless it implements onERC721Received
+        vm.assume(to_ != address(0) && to_.code.length == 0);
+        vm.assume(premium_ > 0);
+        vm.assume(coverageDuration_ > 0 && coverageDuration_ <= 365 days);
+
+        vm.startPrank(args.managerContract);
+        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        vm.stopPrank();
+
+        uint256 _tokenId = insuranceCoverageNFT.tokenId() - 1;
+        (
+            uint256 _id,
+            uint256 _premium,
+            uint256 _startDate,
+            uint256 _endDate,
+            bool _isActive
+        ) = insuranceCoverageNFT.policyDetails(_tokenId);
+        assertEq(_id, _tokenId);
+        assertEq(_premium, _premium);
+        assertEq(_startDate, block.timestamp);
+        assertEq(_endDate, block.timestamp + coverageDuration_);
+        assertTrue(_isActive);
+
+        assertEq(insuranceCoverageNFT.ownerOf(_tokenId), to_);
+    }
+
+    function test_mint_failInvalidRole(
+        address nonManager_,
+        address to_,
+        uint256 premium_,
+        uint256 coverageDuration_
+    ) public {
+        vm.assume(nonManager_ != args.managerContract);
+        vm.assume(to_ != address(0) && to_.code.length == 0);
+        vm.assume(premium_ > 0);
+        vm.assume(coverageDuration_ > 0 && coverageDuration_ <= 365 days);
+
+        vm.startPrank(nonManager_);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                nonManager_,
+                insuranceCoverageNFT.MANAGER_CONTRACT()
+            )
+        );
+        insuranceCoverageNFT.mint(to_, premium_, coverageDuration_);
+        vm.stopPrank();
+        assertEq(insuranceCoverageNFT.tokenId(), 0);
     }
 }
