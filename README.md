@@ -55,6 +55,10 @@ The User then has a window (of 7 days) to activate the insurance by providing ER
 
 When the policy is activated by the User, an NFT is generated to represent their insurance claim. The User is free to burn the token if they want to revoke coverage; otherwise, their coverage is only valid up until the end date defined by the amount of ERC20 token they have provided relative to their premium
 
+### YieldManager
+
+Manages the yield provided by Users that purchase policies. When receiving ERC20 token, the contract will deposit into an Aave pool in order to generate lending yield. When a claim is made, the tokens are withdrawn and the value of the policy is sent back to the User.
+
 #### User Lifecycle
 
 This contract manages the majority of the user-facing executions. It provides an interface that users can directly execute transactions from.
@@ -75,11 +79,11 @@ sequenceDiagram
     AdjusterOperationsContract ->> Adjuster: grant role
 ```
 
-#### Access Controls
+### AdjusterOperations
 
 There are complex access controls, mostly involving the Adjusters. There is a Master Admin defined in the AdjusterOperations contract, with the power of granting Approver roles. Those Approvers have the power to provision Adjusters. There is a requirement of 1 Approver and 3 Adjusters for normal operations to commence. Separation of access controls here provides a more secure way of managing the different operations.
 
-### Insurance Adjusters Lifecycle
+#### Insurance Adjusters Lifecycle
 
 Here is the flow for the lifecycle of Insurance Adjusters as they get approved.
 
@@ -101,9 +105,11 @@ sequenceDiagram
 
 There are many potential improvements possible for this project:
 
+- testing: full coverage is necessary but not sufficient. More edge cases can be covered, as well as a bit of missing branch coverage. Invariant tests and deeper fuzz testing is also possible.
 - more optimized yield: there could be more flexible yield rather than purely AaveV3 related lending. There could also be more complex and clean management of the treasury. In particular, the YieldManager contract should be updated to define treasury admins that are allowed to withdraw the yield for profit. As it currently stands, tokens can be locked inside the contract without a means of withdrawing this yield.
 - governance features for Adjuster approval: currently the Master Admin can just set up Approvers, and they can just set up Adjusters. This process can be much more decentralized and optimized by providing governance, perhaps with a governance token, which would allow these admins to be added via vote.
 - Adjuster management: Adjusters can also be managed more optimally by having a reputation system that will result in penalties for poor performance. Also, they do not currently earn anything from the yield, and this would improve the overall incentive structure of the system. Also, only 1 Adjuster is required to review an application, which can be flawed.
+- Policy claim logic: currently there are no approvals needed for a user to make a claim. This is a critical flaw and can be improved greatly by perhaps allowing Adjusters to provide approvals.
 - more complex risk logic for calculating premiums: currently a very basic formula is applied to calculate premiums, based on the value of the insurance policy and the risk factor supplied by Adjusters. This can be combined with off-chain personal data such as driver history or location.
 - more payment token options: currently only 1 payment token is accepted. This can be more flexible and also adjustable.
 - upgradability: including upgradable contracts would improve the flexibility of the system long-term to adapt to some of the changes described. This is particularly useful if there is already tokens stored in the contract and migration is cumbersome.
