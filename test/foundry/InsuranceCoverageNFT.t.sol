@@ -80,7 +80,7 @@ contract InsuranceCoverageNFTTest is Test, CustomTest {
         );
 
         vm.startPrank(args.managerContract);
-        uint256 _expectedId = 0;
+        uint256 _expectedId = 1;
         bool _expectedIsActive = true;
         vm.expectEmit(true, true, true, false);
         emit IERC721.Transfer(address(0), to_, _expectedId);
