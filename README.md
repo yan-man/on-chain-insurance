@@ -55,7 +55,7 @@ The User then has a window (of 7 days) to activate the insurance by providing ER
 
 ### InsuranceCoverageNFT
 
-When the policy is activated by the User, an NFT is generated to represent their insurance claim. The User is free to burn the token if they want to revoke coverage; otherwise, their coverage is only valid up until the end date defined by the amount of ERC20 token they have provided relative to their premium
+When the policy is activated by the User, an NFT is generated to represent their insurance claim. The User is free to burn the token if they want to revoke coverage; otherwise, their coverage is only valid up until the end date defined by the amount of ERC20 token they have provided relative to their premium.
 
 ### YieldManager
 
