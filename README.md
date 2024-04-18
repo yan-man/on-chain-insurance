@@ -55,7 +55,7 @@ The User then has a window (of 7 days) to activate the insurance by providing ER
 
 ### InsuranceCoverageNFT
 
-When the policy is activated by the User, an NFT is generated to represent their insurance claim. The User is free to burn the token if they want to revoke coverage; otherwise, their coverage is only valid up until the end date defined by the amount of ERC20 token they have provided relative to their premium
+When the policy is activated by the User, an NFT is generated to represent their insurance claim. The User is free to burn the token if they want to revoke coverage; otherwise, their coverage is only valid up until the end date defined by the amount of ERC20 token they have provided relative to their premium.
 
 ### YieldManager
 
@@ -63,22 +63,28 @@ Manages the yield provided by Users that purchase policies. When receiving ERC20
 
 #### User Lifecycle
 
-This contract manages the majority of the user-facing executions. It provides an interface that users can directly execute transactions from.
+The `InsuranceManager` contract manages the majority of the user-facing executions. It provides an interface that users can directly execute transactions from.
 
 Here is the flow for the lifecycle of a User as they apply for insurance, pay for the plan, and claim a policy.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Adjuster
-    participant AdjusterOperationsContract
-    actor ApproverAdmin
-    actor MasterAdmin
+    actor User
+    participant InsuranceManagerContract
+    participant YieldManagerContract
+    participant InsuranceCoverageNFTContract
+    actor InsuranceAdjuster
 
-    MasterAdmin ->> AdjusterOperationsContract: set an ApproverAdmin
-    AdjusterOperationsContract ->> ApproverAdmin: grant role
-    ApproverAdmin ->> AdjusterOperationsContract: set Adjusters
-    AdjusterOperationsContract ->> Adjuster: grant role
+    User ->> InsuranceManagerContract: submitApplication with value to ensure / car details
+    InsuranceAdjuster ->> InsuranceManagerContract: reviewApplication to approve/reject and determine risk
+    InsuranceManagerContract ->> InsuranceManagerContract: calculate premium
+    User ->> InsuranceManagerContract: activatePolicy
+    User ->> YieldManagerContract: ERC20 Payment Tokens are used to generate yield
+    InsuranceManagerContract ->> InsuranceCoverageNFTContract: mint NFT
+    InsuranceCoverageNFTContract ->> User: receive NFT
+    User ->> InsuranceManagerContract: claimPolicy to get a payout
+    YieldManagerContract ->> User: Returns withdrawn tokens for insured value
 ```
 
 ### AdjusterOperations
